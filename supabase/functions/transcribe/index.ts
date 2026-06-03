@@ -9,15 +9,29 @@
 // Required function secrets:
 //   DEEPGRAM_API_KEY           - Deepgram API key
 //   TRANSCRIBE_WEBHOOK_SECRET  - shared secret echoed by the webhook header
+//   R2_ACCOUNT_ID              - Cloudflare R2 account id
+//   R2_ACCESS_KEY_ID           - R2 S3 API access key id
+//   R2_SECRET_ACCESS_KEY       - R2 S3 API secret
+//   R2_VIDEOS_BUCKET           - private R2 bucket holding the webm recordings
 // (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically.)
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { AwsClient } from "https://esm.sh/aws4fetch@1.0.20";
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 
-const RECORDINGS_BUCKET = "recordings";
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 const MAX_TOPICS = 6;
+
+// Deepgram's summary refers to people with generic labels ("Speaker 0",
+// "Speaker 1", …). These are single-speaker recordings, so rewrite any such
+// label to the recording owner's name.
+const SPEAKER_NAME = "Faez";
+
+function personalizeSummary(summary: string | null): string | null {
+  if (!summary) return summary;
+  return summary.replace(/\bSpeaker\s*\d+\b/gi, SPEAKER_NAME);
+}
 
 // Summarization + topic detection are English-only; on non-English audio the
 // whole request fails, so we fall back to a transcript-only request.
@@ -74,6 +88,29 @@ const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
 
+// Presign an R2 GET URL (query-signed) that Deepgram fetches as a plain remote
+// URL. R2 is S3-compatible, so aws4fetch signs it the same as any S3 request.
+const r2 = new AwsClient({
+  accessKeyId: Deno.env.get("R2_ACCESS_KEY_ID")!,
+  secretAccessKey: Deno.env.get("R2_SECRET_ACCESS_KEY")!,
+  service: "s3",
+  region: "auto",
+});
+
+async function presignR2Get(key: string, expiresSeconds: number): Promise<string> {
+  const accountId = Deno.env.get("R2_ACCOUNT_ID")!;
+  const bucket = Deno.env.get("R2_VIDEOS_BUCKET")!;
+  const url = new URL(
+    `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${key}`,
+  );
+  url.searchParams.set("X-Amz-Expires", String(expiresSeconds));
+  const signed = await r2.sign(url.toString(), {
+    method: "GET",
+    aws: { signQuery: true },
+  });
+  return signed.url;
+}
+
 async function setStatus(
   id: string,
   fields: Record<string, unknown>,
@@ -125,14 +162,8 @@ async function transcribeRecording(
   try {
     await setStatus(id, { transcript_status: "processing" });
 
-    const { data: signed, error: signError } = await admin.storage
-      .from(RECORDINGS_BUCKET)
-      .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
-    if (signError || !signed?.signedUrl) {
-      throw new Error(signError?.message ?? "Could not sign recording URL");
-    }
-
-    const result = await requestDeepgram(signed.signedUrl);
+    const signedUrl = await presignR2Get(storagePath, SIGNED_URL_TTL_SECONDS);
+    const result = await requestDeepgram(signedUrl);
     const channel = result.results?.channels?.[0];
     const fullText = channel?.alternatives?.[0]?.transcript ?? "";
     const segments = (result.results?.utterances ?? []).map((u) => ({
@@ -141,7 +172,7 @@ async function transcribeRecording(
       text: u.transcript,
       ...(u.speaker !== undefined ? { speaker: u.speaker } : {}),
     }));
-    const summary = result.results?.summary?.short ?? null;
+    const summary = personalizeSummary(result.results?.summary?.short ?? null);
     const topics = topTopics(result);
 
     await setStatus(id, {

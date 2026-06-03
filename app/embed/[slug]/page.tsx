@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { presignGetUrl, publicThumbnailUrl } from "@/lib/r2";
 import { isExpired } from "@/lib/utils";
-import {
-  RECORDINGS_BUCKET,
-  THUMBNAILS_BUCKET,
-  type Recording,
-} from "@/lib/types";
+import { type Recording } from "@/lib/types";
 import { VideoPlayer } from "../../v/[slug]/_components/video-player";
 
 export default async function EmbedPage({
@@ -31,24 +28,15 @@ export default async function EmbedPage({
     notFound();
   }
 
-  const { data: signed } = await admin.storage
-    .from(RECORDINGS_BUCKET)
-    .createSignedUrl(recording.storage_path, 60 * 60 * 2);
-  if (!signed?.signedUrl) notFound();
+  const videoUrl = await presignGetUrl(recording.storage_path, 60 * 60 * 2);
 
   const poster = recording.thumbnail_path
-    ? admin.storage
-        .from(THUMBNAILS_BUCKET)
-        .getPublicUrl(recording.thumbnail_path).data.publicUrl
+    ? publicThumbnailUrl(recording.thumbnail_path)
     : null;
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-950">
-      <VideoPlayer
-        src={signed.signedUrl}
-        title={recording.title}
-        poster={poster}
-      />
+      <VideoPlayer src={videoUrl} title={recording.title} poster={poster} />
     </main>
   );
 }

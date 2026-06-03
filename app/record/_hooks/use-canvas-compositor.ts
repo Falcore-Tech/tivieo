@@ -14,6 +14,7 @@ type Options = {
 // Fixed output size. The canvas must NOT be resized after captureStream() is
 // called — doing so ends the captured track on Firefox. drawCover() scales the
 // screen/webcam to fit, so a constant 1080p surface works for any source size.
+// Storage is Cloudflare R2 (no per-file cap), so we record full 1080p.
 const OUTPUT_WIDTH = 1920;
 const OUTPUT_HEIGHT = 1080;
 
@@ -154,21 +155,33 @@ export function useCanvasCompositor({
     render();
   }, [canvasRef, screenStream, webcamStream, corner, showBubble]);
 
-  // Drive painting. While the tab is visible, requestAnimationFrame gives
-  // smooth, vsync-aligned frames. While the tab is hidden, the browser pauses
-  // rAF AND clamps setInterval to ~1fps — which made backgrounded recordings
-  // laggy. A Web Worker timer is NOT throttled for hidden tabs, so it pings the
-  // main thread ~30fps to keep painting (and thus the capture) smooth.
+  // Drive painting. While the window is focused, requestAnimationFrame gives
+  // smooth, vsync-aligned frames. But the browser throttles/pauses rAF whenever
+  // the page stops being actively painted — not just on tab switch
+  // (document.hidden), but also when ANOTHER application window covers/occludes
+  // the browser while it still reports visibilityState="visible". In that
+  // occluded case rAF stalls yet document.hidden stays false, so a hidden-only
+  // fallback never fires and the canvas (and thus the capture) freezes.
+  //
+  // Fix: both drivers share one lastDraw timestamp. rAF paints when it can and
+  // keeps lastDraw fresh; a Web Worker timer (NOT throttled when hidden or
+  // occluded) pings the main thread ~30fps and paints only when rAF has gone
+  // stale. Focused → rAF drives, worker idle. Hidden or occluded → rAF stalls,
+  // worker takes over. No reliance on document.hidden.
   useEffect(() => {
     let active = true;
     let lastDraw = 0;
     const targetInterval = 1000 / 30;
 
-    let rafId = requestAnimationFrame(function loop(now) {
-      if (!document.hidden && now - lastDraw >= targetInterval - 1) {
+    const drawIfDue = (now: number) => {
+      if (now - lastDraw >= targetInterval - 1) {
         renderRef.current();
         lastDraw = now;
       }
+    };
+
+    let rafId = requestAnimationFrame(function loop(now) {
+      drawIfDue(now);
       if (active) rafId = requestAnimationFrame(loop);
     });
 
@@ -180,7 +193,7 @@ export function useCanvasCompositor({
     );
     const worker = new Worker(workerUrl);
     worker.onmessage = () => {
-      if (document.hidden) renderRef.current();
+      drawIfDue(performance.now());
     };
     worker.postMessage("start");
 

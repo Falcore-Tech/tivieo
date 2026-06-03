@@ -49,6 +49,3 @@ export type Collection = {
 };
 
 export type LibraryRecording = Recording & { thumbnailUrl: string | null };
-
-export const RECORDINGS_BUCKET = "recordings";
-export const THUMBNAILS_BUCKET = "thumbnails";

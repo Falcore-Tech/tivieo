@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { publicThumbnailUrl } from "@/lib/r2";
 import {
-  THUMBNAILS_BUCKET,
   type Collection,
   type LibraryRecording,
   type Recording,
@@ -28,7 +27,6 @@ export async function Library({ userId }: { userId: string }) {
 
   const recordings = recordingRows ?? [];
   const collections = collectionRows ?? [];
-  const admin = createAdminClient();
 
   const items: LibraryRecording[] = recordings.map((recording) => ({
     ...recording,
@@ -37,9 +35,7 @@ export async function Library({ userId }: { userId: string }) {
     deleted_at: recording.deleted_at ?? null,
     collection_id: recording.collection_id ?? null,
     thumbnailUrl: recording.thumbnail_path
-      ? admin.storage
-          .from(THUMBNAILS_BUCKET)
-          .getPublicUrl(recording.thumbnail_path).data.publicUrl
+      ? publicThumbnailUrl(recording.thumbnail_path)
       : null,
   }));
 

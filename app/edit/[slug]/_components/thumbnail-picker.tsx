@@ -5,20 +5,25 @@ import { Camera, ImageUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/client";
-import { THUMBNAILS_BUCKET } from "@/lib/types";
 import { setThumbnail } from "../_actions";
 
 type Props = {
   recordingId: string;
-  userId: string;
   videoUrl: string | null;
   initialThumbnailUrl: string | null;
 };
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function ThumbnailPicker({
   recordingId,
-  userId,
   videoUrl,
   initialThumbnailUrl,
 }: Props) {
@@ -27,21 +32,14 @@ export function ThumbnailPicker({
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const supabase = createClient();
 
   async function saveBlob(blob: Blob) {
     setBusy(true);
     try {
-      const path = `${userId}/${crypto.randomUUID()}.jpg`;
-      const { error } = await supabase.storage
-        .from(THUMBNAILS_BUCKET)
-        .upload(path, blob, { contentType: "image/jpeg", upsert: true });
-      if (error) throw error;
-      const result = await setThumbnail(recordingId, path);
+      const dataUrl = await blobToDataUrl(blob);
+      const result = await setThumbnail(recordingId, dataUrl);
       if (result.error) throw new Error(result.error);
-      const url = supabase.storage.from(THUMBNAILS_BUCKET).getPublicUrl(path).data
-        .publicUrl;
-      setPreview(`${url}?t=${Date.now()}`);
+      setPreview(`${result.url}?t=${Date.now()}`);
       toast.success("Thumbnail updated");
       setFraming(false);
     } catch (error) {

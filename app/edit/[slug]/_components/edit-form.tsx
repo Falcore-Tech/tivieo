@@ -28,7 +28,6 @@ import { changeSlug, updateRecording } from "../_actions";
 type Props = {
   recording: Recording;
   collections: Collection[];
-  userId: string;
   videoUrl: string | null;
   thumbnailUrl: string | null;
 };
@@ -38,7 +37,6 @@ const NO_FOLDER = "none";
 export function EditForm({
   recording,
   collections,
-  userId,
   videoUrl,
   thumbnailUrl,
 }: Props) {
@@ -197,7 +195,6 @@ export function EditForm({
 
       <ThumbnailPicker
         recordingId={recording.id}
-        userId={userId}
         videoUrl={videoUrl}
         initialThumbnailUrl={thumbnailUrl}
       />

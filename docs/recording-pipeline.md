@@ -10,24 +10,42 @@ bespoke piece.
    - Enumerate devices for pickers; handle permission denial gracefully.
 
 2. **Composite (PiP)** — `_hooks/use-canvas-compositor.ts`
-   - Each `requestAnimationFrame`: draw the screen frame to a `<canvas>` sized to the screen track,
+   - Each paint: draw the screen frame to a fixed **1920×1080** `<canvas>` (`drawCover` scales any
+     source to fit; the canvas is never resized — resizing ends the captured track on Firefox),
      then draw the webcam cropped to a circle in a draggable corner bubble.
+   - **Painting is driven by two sources sharing one `lastDraw` clock:** `requestAnimationFrame`
+     (smooth, vsync-aligned) paints while the window is focused; an inline Blob-URL **Web Worker
+     timer** (~30fps, not background-throttled) paints only when rAF has gone stale. The worker keys
+     off staleness (`now - lastDraw >= targetInterval`), **not** `document.hidden` — Chrome
+     throttles/pauses rAF both on tab-switch/minimize (`document.hidden` true) **and** when another
+     application window occludes the browser (`document.hidden` stays false). Keying off staleness
+     covers both, so the capture never freezes when the user moves to another window/page.
    - Expose `canvas.captureStream(30)` as the composited video track.
 
 3. **Mix audio** — `_lib/compose-audio.ts`
    - `AudioContext` connects system-audio source + mic source into one
      `MediaStreamAudioDestinationNode`. Falls back to mic-only when system audio is absent.
 
-4. **Record** — `_hooks/use-recorder.ts` (thin **RecordRTC** wrapper)
+4. **Record** — `_hooks/use-recorder.ts` (thin native **MediaRecorder** wrapper)
    - Combine composited video track + mixed audio track into one `MediaStream`.
-   - `RecordRTC(stream, { type: 'video', mimeType: 'video/webm;codecs=vp9' })` with fallbacks.
-   - start / pause / resume / stop. On stop, `getSeekableBlob()` fixes webm duration metadata for the
-     player scrubber. Also grab a poster frame from the canvas.
+   - `new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus', videoBitsPerSecond,
+     audioBitsPerSecond })` with codec fallbacks (vp9 → vp8 → default).
+   - **Quality:** 1080p30 at **8 Mbps** video + **128 kbps** audio (~61 MB/min) — crisp screen text +
+     webcam. Storage is Cloudflare R2 (no per-file cap), so quality is the only constraint; lower the
+     `VIDEO_BITS_PER_SECOND` constant to trade quality for size.
+   - `recorder.start(1000)` flushes a chunk every second (`ondataavailable`) so a crash never loses
+     the take. start / pause / resume / stop. On stop, `fix-webm-duration` patches webm duration
+     metadata for the player scrubber. Also grab a poster frame from the canvas.
 
 5. **Upload + mint link** — `_lib/upload.ts` + `_actions.ts`
-   - `tus-js-client` resumable upload of the Blob to `recordings/<user_id>/<uuid>.webm` (small files
-     may use `supabase.storage.upload`); poster to `thumbnails`.
-   - `createRecording()` server action computes the slug, inserts the row, returns `/v/<slug>`.
+   - `createUploadTarget()` server action authenticates the user, derives the R2 key
+     `<user_id>/<uuid>.webm`, and returns a **presigned PUT URL** for the private `tivieo-videos`
+     bucket.
+   - The client `axios.put`s the webm Blob straight to R2 with `Content-Type: video/webm` (must match
+     the signed type) and `onUploadProgress` driving the dialog bar — no tus, no proxy through Next.
+   - `createRecording()` server action uploads the small poster JPEG server-side to the public
+     `tivieo-thumbnails` bucket (`putThumbnail`), computes the slug, inserts the row (storing the bare
+     R2 keys in `storage_path`/`thumbnail_path`), returns `/v/<slug>`. See `docs/r2-storage.md`.
 
 ## Components
 `recorder-studio` orchestrates: `device-picker` → `pip-preview` (live canvas) → `recording-controls`

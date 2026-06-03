@@ -2,10 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { presignGetUrl, deleteObjects } from "@/lib/r2";
 import {
-  RECORDINGS_BUCKET,
-  THUMBNAILS_BUCKET,
   type Collection,
   type Recording,
   type RecordingVisibility,
@@ -95,14 +93,12 @@ export async function deleteRecordingsForever(ids: string[]) {
     .returns<Pick<Recording, "storage_path" | "thumbnail_path">[]>();
 
   if (rows && rows.length > 0) {
-    const videoPaths = rows.map((row) => row.storage_path);
-    const thumbPaths = rows
+    const videoKeys = rows.map((row) => row.storage_path);
+    const thumbKeys = rows
       .map((row) => row.thumbnail_path)
       .filter((path): path is string => Boolean(path));
-    await supabase.storage.from(RECORDINGS_BUCKET).remove(videoPaths);
-    if (thumbPaths.length > 0) {
-      await supabase.storage.from(THUMBNAILS_BUCKET).remove(thumbPaths);
-    }
+    await deleteObjects("videos", videoKeys);
+    await deleteObjects("thumbnails", thumbKeys);
   }
 
   const { error } = await supabase
@@ -186,13 +182,9 @@ export async function getDownloadUrl(id: string) {
     .maybeSingle<Pick<Recording, "storage_path" | "title">>();
   if (!recording) return { error: "Recording not found." };
 
-  const admin = createAdminClient();
   const filename = `${recording.title || "recording"}.webm`;
-  const { data, error } = await admin.storage
-    .from(RECORDINGS_BUCKET)
-    .createSignedUrl(recording.storage_path, 60 * 5, { download: filename });
-  if (error || !data?.signedUrl) {
-    return { error: error?.message ?? "Could not create download link." };
-  }
-  return { url: data.signedUrl };
+  const url = await presignGetUrl(recording.storage_path, 60 * 5, {
+    downloadFilename: filename,
+  });
+  return { url };
 }

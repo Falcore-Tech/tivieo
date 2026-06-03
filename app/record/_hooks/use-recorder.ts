@@ -15,10 +15,11 @@ function pickMimeType() {
 }
 
 // Explicit bitrates so file size is predictable instead of browser-default.
-// 1 Mbps video + 128 kbps audio ≈ 8.5 MB/min → a 5-min take lands ~42MB,
-// under Supabase free-tier's 50MB per-file cap. VP9 keeps 1080p screen text
-// legible at this rate since mostly-static frames compress well below the cap.
-const VIDEO_BITS_PER_SECOND = 1_000_000;
+// Recording is full 1080p (see OUTPUT_WIDTH/HEIGHT in use-canvas-compositor.ts)
+// stored on Cloudflare R2, which has no per-file cap, so we use a quality-grade
+// 8 Mbps video + 128 kbps audio ≈ 61 MB/min for crisp screen text and webcam.
+// Tunable: lower it to trade quality for smaller files.
+const VIDEO_BITS_PER_SECOND = 8_000_000;
 const AUDIO_BITS_PER_SECOND = 128_000;
 
 export function useRecorder() {

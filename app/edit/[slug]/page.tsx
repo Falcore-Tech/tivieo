@@ -3,15 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { presignGetUrl, publicThumbnailUrl } from "@/lib/r2";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import {
-  RECORDINGS_BUCKET,
-  THUMBNAILS_BUCKET,
-  type Collection,
-  type Recording,
-} from "@/lib/types";
+import { type Collection, type Recording } from "@/lib/types";
 import { EditForm } from "./_components/edit-form";
 
 export const metadata: Metadata = { title: "Edit recording · Tivieo" };
@@ -42,14 +37,9 @@ export default async function EditPage({
     .order("created_at", { ascending: true })
     .returns<Collection[]>();
 
-  const admin = createAdminClient();
-  const { data: signed } = await admin.storage
-    .from(RECORDINGS_BUCKET)
-    .createSignedUrl(recording.storage_path, 60 * 60 * 2);
+  const videoUrl = await presignGetUrl(recording.storage_path, 60 * 60 * 2);
   const thumbnailUrl = recording.thumbnail_path
-    ? admin.storage
-        .from(THUMBNAILS_BUCKET)
-        .getPublicUrl(recording.thumbnail_path).data.publicUrl
+    ? publicThumbnailUrl(recording.thumbnail_path)
     : null;
 
   return (
@@ -65,8 +55,7 @@ export default async function EditPage({
         <EditForm
           recording={recording}
           collections={collections ?? []}
-          userId={user.id}
-          videoUrl={signed?.signedUrl ?? null}
+          videoUrl={videoUrl}
           thumbnailUrl={thumbnailUrl}
         />
       </main>

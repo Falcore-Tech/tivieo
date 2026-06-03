@@ -15,7 +15,7 @@ import { SaveDialog } from "./save-dialog";
 
 type StudioPhase = "setup" | "countdown" | "recording" | "paused" | "review";
 
-export function RecorderStudio({ userId }: { userId: string }) {
+export function RecorderStudio() {
   const media = useMediaStreams();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioCleanupRef = useRef<() => void>(() => {});
@@ -181,7 +181,6 @@ export function RecorderStudio({ userId }: { userId: string }) {
       <SaveDialog
         open={phase === "review"}
         result={result}
-        userId={userId}
         onRecordAgain={handleRecordAgain}
       />
     </div>

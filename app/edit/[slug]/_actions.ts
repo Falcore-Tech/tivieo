@@ -3,13 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  putThumbnail,
+  publicThumbnailUrl,
+  deleteObjects,
+  dataUrlToBytes,
+  r2Keys,
+} from "@/lib/r2";
 import { slugify } from "@/lib/utils";
 import { hashPassword } from "@/lib/password";
-import {
-  THUMBNAILS_BUCKET,
-  type Recording,
-  type RecordingVisibility,
-} from "@/lib/types";
+import { type Recording, type RecordingVisibility } from "@/lib/types";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -95,7 +98,7 @@ export async function changeSlug(id: string, desired: string) {
   return { ok: true, slug: next };
 }
 
-export async function setThumbnail(id: string, thumbnailPath: string) {
+export async function setThumbnail(id: string, posterDataUrl: string) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "You must be signed in." };
 
@@ -106,22 +109,23 @@ export async function setThumbnail(id: string, thumbnailPath: string) {
     .eq("user_id", user.id)
     .maybeSingle<Pick<Recording, "thumbnail_path">>();
 
+  const key = r2Keys.thumbnail(user.id, crypto.randomUUID());
+  await putThumbnail(key, dataUrlToBytes(posterDataUrl));
+
   const { error } = await supabase
     .from("recordings")
-    .update({ thumbnail_path: thumbnailPath, updated_at: now() })
+    .update({ thumbnail_path: key, updated_at: now() })
     .eq("id", id)
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
 
-  if (existing?.thumbnail_path && existing.thumbnail_path !== thumbnailPath) {
-    await supabase.storage
-      .from(THUMBNAILS_BUCKET)
-      .remove([existing.thumbnail_path]);
+  if (existing?.thumbnail_path && existing.thumbnail_path !== key) {
+    await deleteObjects("thumbnails", [existing.thumbnail_path]);
   }
 
   revalidatePath("/");
-  return { ok: true };
+  return { ok: true, url: publicThumbnailUrl(key) };
 }
 
 export async function setSharePassword(id: string, password: string | null) {

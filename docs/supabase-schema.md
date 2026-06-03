@@ -9,12 +9,14 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable (anon) key>
 SUPABASE_SERVICE_ROLE_KEY=<service role key>
 ```
 `@supabase/ssr` uses the **publishable** key naming. The **service role** key is server-only and is
-used by `lib/supabase/admin.ts` to mint signed playback URLs for the private `recordings` bucket —
-only after the request has been authorized by an RLS-gated row fetch. Never expose it to the client.
+used by `lib/supabase/admin.ts` for RLS-bypassing DB reads (slug→row lookups, aliases, view counts).
+Never expose it to the client.
 
-## Storage buckets
-- `recordings` — **private**. Objects keyed `<user_id>/<uuid>.webm`. Played via short-lived signed URLs created server-side.
-- `thumbnails` — **public**. Poster frames keyed `<user_id>/<uuid>.jpg`.
+## File storage (Cloudflare R2 — not Supabase)
+Video + thumbnail **files** live in Cloudflare R2, not Supabase Storage. `storage_path` /
+`thumbnail_path` below hold **bare R2 object keys** (`<user_id>/<uuid>.webm` / `.jpg`), not Supabase
+paths. Private videos play via presigned GET URLs; thumbnails via the public `r2.dev` URL. See
+`docs/r2-storage.md`. (Migration `0005` dropped the old Supabase `recordings`/`thumbnails` buckets.)
 
 ## Table: `recordings`
 | column | type | notes |
@@ -23,8 +25,8 @@ only after the request has been authorized by an RLS-gated row fetch. Never expo
 | `user_id` | uuid → `auth.users` | owner |
 | `title` | text | editable |
 | `slug` | text unique | `slugify(title)-<nanoid(6)>` |
-| `storage_path` | text | path in `recordings` bucket |
-| `thumbnail_path` | text null | path in `thumbnails` bucket |
+| `storage_path` | text | R2 object key in `tivieo-videos` (`<user_id>/<uuid>.webm`) |
+| `thumbnail_path` | text null | R2 object key in `tivieo-thumbnails` (`<user_id>/<uuid>.jpg`) |
 | `duration_seconds` | numeric null | |
 | `size_bytes` | bigint null | |
 | `visibility` | text default `'unlisted'` | `public` \| `unlisted` \| `private` |
@@ -59,13 +61,13 @@ from the watch page via a client beacon with a per-viewer cookie de-dupe.
   **and** (`expires_at is null` or `expires_at > now()`) (0002 tightened this).
 - `collections`: owner-only. `recording_aliases`: public `SELECT` (for redirects); writes go through the
   admin client in server actions.
-- Storage: authenticated users may insert/select/delete objects under their own `<user_id>/` prefix
-  in both buckets; `thumbnails` also allows public read.
+- File access control is enforced at the **app layer** (R2 has no RLS): video keys are only handed out
+  as presigned GET URLs after the watch-page visibility check; thumbnails are public by bucket.
 
 ## Transcription (0003)
 On insert, a recording is created with `transcript_status = 'pending'`. A Supabase **Database Webhook**
 on `INSERT` into `public.recordings` invokes the `transcribe` edge function
-(`supabase/functions/transcribe/`), which mints a signed URL for the private webm and sends it to
+(`supabase/functions/transcribe/`), which presigns an R2 GET URL for the private webm and sends it to
 **Deepgram** (`nova-3`, `utterances`, `detect_language`). It writes `transcript_text` + per-utterance
 `transcript_segments` and flips the row to `ready` (or `error`). The watch page renders a `<track>`
 caption file from `/v/[slug]/captions` (built from the segments, same-origin) plus an interactive,

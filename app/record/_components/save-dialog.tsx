@@ -22,13 +22,12 @@ import type { RecordingResult } from "../_types";
 type Props = {
   open: boolean;
   result: RecordingResult | null;
-  userId: string;
   onRecordAgain: () => void;
 };
 
 type Stage = "form" | "uploading" | "done";
 
-export function SaveDialog({ open, result, userId, onRecordAgain }: Props) {
+export function SaveDialog({ open, result, onRecordAgain }: Props) {
   const [title, setTitle] = useState("");
   const [stage, setStage] = useState<Stage>("form");
   const [progress, setProgress] = useState(0);
@@ -62,15 +61,15 @@ export function SaveDialog({ open, result, userId, onRecordAgain }: Props) {
         { logger: false },
       ).catch(() => result.blob);
       const upload = await uploadRecording({
-        userId,
         blob: playableBlob,
-        posterDataUrl: result.posterDataUrl,
         onProgress: setProgress,
       });
       const response = await createRecording({
         title,
         storagePath: upload.storagePath,
-        thumbnailPath: upload.thumbnailPath,
+        posterDataUrl: result.posterDataUrl,
+        userId: upload.userId,
+        recordingId: upload.recordingId,
         durationSeconds: Math.round(result.durationSeconds),
         sizeBytes: upload.sizeBytes,
       });

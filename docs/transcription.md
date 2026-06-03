@@ -13,11 +13,14 @@ topic chips, and an interactive searchable transcript.
    `x-webhook-secret` header read from **Supabase Vault**.
 3. The function checks the secret, returns `202` immediately, then transcribes in the background
    (`EdgeRuntime.waitUntil`) so a long Deepgram call never trips the trigger's HTTP timeout. It
-   mints a 30-min signed URL for the private webm and sends it to Deepgram `/v1/listen`
+   presigns a 30-min R2 GET URL for the private webm (via `aws4fetch`) and sends it to Deepgram `/v1/listen`
    (`model=nova-3`, `utterances`, `detect_language`, `summarize=v2`, `topics=true`).
    - **English-only intelligence:** `summarize`/`topics` only work on English audio. If the call
      fails (e.g. non-English), the function retries **transcript-only** so transcription never
      breaks — summary/topics are simply left null.
+   - **Speaker naming:** Deepgram phrases its summary with generic labels (`Speaker 0`,
+     `Speaker 1`, …). `personalizeSummary()` rewrites any `Speaker N` label to the owner's name
+     (`SPEAKER_NAME = "Faez"` in `index.ts`) before storing, since these are single-speaker recordings.
 4. It writes `transcript_text`, `transcript_segments` (`{start,end,text,speaker?}`),
    `transcript_summary`, `transcript_topics`, and flips `transcript_status` to `ready`
    (or `error` on failure).
@@ -54,6 +57,8 @@ This is wired up live on project `ewmitykmynlvlstnabjy`. To reproduce on a fresh
    supabase secrets set DEEPGRAM_API_KEY=<key>
    supabase secrets set TRANSCRIBE_WEBHOOK_SECRET=<random>
    -- in SQL: select vault.create_secret('<same random>', 'transcribe_webhook_secret');
+   # R2 — so the function can presign the private webm for Deepgram (see docs/r2-storage.md):
+   supabase secrets set R2_ACCOUNT_ID=<id> R2_ACCESS_KEY_ID=<id> R2_SECRET_ACCESS_KEY=<secret> R2_VIDEOS_BUCKET=tivieo-videos
    ```
    (`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.)
    The webhook trigger is created by migration `0004` — no dashboard step needed.

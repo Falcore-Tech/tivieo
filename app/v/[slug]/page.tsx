@@ -4,13 +4,10 @@ import type { Metadata } from "next";
 import { CalendarX, Eye } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { presignGetUrl, publicThumbnailUrl } from "@/lib/r2";
 import { SiteHeader } from "@/components/site-header";
 import { formatDuration, isExpired } from "@/lib/utils";
-import {
-  RECORDINGS_BUCKET,
-  THUMBNAILS_BUCKET,
-  type Recording,
-} from "@/lib/types";
+import { type Recording } from "@/lib/types";
 import { VideoProvider } from "./_components/video-context";
 import { VideoPlayer } from "./_components/video-player";
 import { TranscriptInsights } from "./_components/transcript-insights";
@@ -114,15 +111,10 @@ export default async function WatchPage({
     }
   }
 
-  const { data: signed } = await admin.storage
-    .from(RECORDINGS_BUCKET)
-    .createSignedUrl(recording.storage_path, 60 * 60 * 2);
-  if (!signed?.signedUrl) notFound();
+  const videoUrl = await presignGetUrl(recording.storage_path, 60 * 60 * 2);
 
   const poster = recording.thumbnail_path
-    ? admin.storage
-        .from(THUMBNAILS_BUCKET)
-        .getPublicUrl(recording.thumbnail_path).data.publicUrl
+    ? publicThumbnailUrl(recording.thumbnail_path)
     : null;
 
   return (
@@ -131,7 +123,7 @@ export default async function WatchPage({
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
         <VideoProvider>
           <VideoPlayer
-            src={signed.signedUrl}
+            src={videoUrl}
             title={recording.title}
             poster={poster}
             captionsSrc={

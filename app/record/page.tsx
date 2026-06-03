@@ -22,7 +22,7 @@ export default async function RecordPage() {
             Share your screen, position your camera bubble, and hit record.
           </p>
         </div>
-        <RecorderStudio userId={user.id} />
+        <RecorderStudio />
       </main>
     </>
   );
