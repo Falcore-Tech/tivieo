@@ -63,6 +63,7 @@ export function useCanvasCompositor({
 }: Options) {
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
+  const renderRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     screenVideoRef.current = createHiddenVideo();
@@ -145,14 +146,48 @@ export function useCanvasCompositor({
       }
     };
 
-    // Drive the draw loop with setInterval rather than requestAnimationFrame:
-    // rAF is throttled to ~0fps when the tab is backgrounded (which happens
-    // while screen-sharing another window), which would freeze the captured
-    // canvas stream and produce an empty recording. setInterval keeps painting.
-    const intervalId = setInterval(render, 1000 / 30);
+    renderRef.current = render;
     render();
-    return () => clearInterval(intervalId);
   }, [canvasRef, screenStream, webcamStream, corner, showBubble]);
+
+  // Drive painting. While the tab is visible, requestAnimationFrame gives
+  // smooth, vsync-aligned frames. While the tab is hidden, the browser pauses
+  // rAF AND clamps setInterval to ~1fps — which made backgrounded recordings
+  // laggy. A Web Worker timer is NOT throttled for hidden tabs, so it pings the
+  // main thread ~30fps to keep painting (and thus the capture) smooth.
+  useEffect(() => {
+    let active = true;
+    let lastDraw = 0;
+    const targetInterval = 1000 / 30;
+
+    let rafId = requestAnimationFrame(function loop(now) {
+      if (!document.hidden && now - lastDraw >= targetInterval - 1) {
+        renderRef.current();
+        lastDraw = now;
+      }
+      if (active) rafId = requestAnimationFrame(loop);
+    });
+
+    const workerSource = `let id=null;onmessage=(e)=>{if(e.data==='start'){if(id===null)id=setInterval(()=>postMessage(0),${Math.round(
+      targetInterval,
+    )});}else{clearInterval(id);id=null;}};`;
+    const workerUrl = URL.createObjectURL(
+      new Blob([workerSource], { type: "application/javascript" }),
+    );
+    const worker = new Worker(workerUrl);
+    worker.onmessage = () => {
+      if (document.hidden) renderRef.current();
+    };
+    worker.postMessage("start");
+
+    return () => {
+      active = false;
+      cancelAnimationFrame(rafId);
+      worker.postMessage("stop");
+      worker.terminate();
+      URL.revokeObjectURL(workerUrl);
+    };
+  }, []);
 
   const getCompositeStream = useCallback(
     (fps = 30) => {

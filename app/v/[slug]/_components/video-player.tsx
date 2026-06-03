@@ -1,13 +1,5 @@
 "use client";
 
-import "@vidstack/react/player/styles/default/theme.css";
-import "@vidstack/react/player/styles/default/layouts/video.css";
-import { MediaPlayer, MediaProvider } from "@vidstack/react";
-import {
-  defaultLayoutIcons,
-  DefaultVideoLayout,
-} from "@vidstack/react/player/layouts/default";
-
 type Props = {
   src: string;
   title: string;
@@ -16,15 +8,16 @@ type Props = {
 
 export function VideoPlayer({ src, title, poster }: Props) {
   return (
-    <MediaPlayer
-      title={title}
-      src={{ src, type: "video/webm" }}
-      poster={poster ?? undefined}
+    <video
+      controls
       playsInline
+      preload="metadata"
+      poster={poster ?? undefined}
+      aria-label={title}
       className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-neutral-950"
     >
-      <MediaProvider />
-      <DefaultVideoLayout icons={defaultLayoutIcons} />
-    </MediaPlayer>
+      <source src={src} type="video/webm" />
+      Your browser doesn&apos;t support embedded video.
+    </video>
   );
 }
