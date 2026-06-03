@@ -135,6 +135,10 @@ export function useCanvasCompositor({
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
+        // Mirror the webcam horizontally about the bubble center so it reads
+        // like a natural mirror image (matches what users expect on camera).
+        ctx.translate(cx * 2, 0);
+        ctx.scale(-1, 1);
         drawCover(ctx, webcamVideo, x, y, size, size);
         ctx.restore();
 
