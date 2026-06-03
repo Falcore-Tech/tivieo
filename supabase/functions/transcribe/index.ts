@@ -59,11 +59,20 @@ type WebhookPayload = {
   } | null;
 };
 
+type DeepgramWord = {
+  word: string;
+  start: number;
+  end: number;
+  punctuated_word?: string;
+  speaker?: number;
+};
+
 type DeepgramUtterance = {
   start: number;
   end: number;
   transcript: string;
   speaker?: number;
+  words?: DeepgramWord[];
 };
 
 type DeepgramTopic = { topic: string; confidence_score?: number };
@@ -171,6 +180,19 @@ async function transcribeRecording(
       end: u.end,
       text: u.transcript,
       ...(u.speaker !== undefined ? { speaker: u.speaker } : {}),
+      ...(u.words
+        ? {
+            words: u.words.map((w) => ({
+              word: w.word,
+              start: w.start,
+              end: w.end,
+              ...(w.punctuated_word !== undefined
+                ? { punctuated_word: w.punctuated_word }
+                : {}),
+              ...(w.speaker !== undefined ? { speaker: w.speaker } : {}),
+            })),
+          }
+        : {}),
     }));
     const summary = personalizeSummary(result.results?.summary?.short ?? null);
     const topics = topTopics(result);

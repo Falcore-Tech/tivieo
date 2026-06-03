@@ -1,8 +1,11 @@
 import { cookies } from "next/headers";
+import { webvtt } from "@deepgram/captions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isExpired } from "@/lib/utils";
 import type { Recording, TranscriptSegment } from "@/lib/types";
+
+const MAX_WORDS_PER_CUE = 10;
 
 function vttTimestamp(seconds: number) {
   const whole = Math.max(0, Math.floor(seconds));
@@ -13,12 +16,62 @@ function vttTimestamp(seconds: number) {
   return `${hh}:${mm}:${ss}.${String(ms).padStart(3, "0")}`;
 }
 
-function toVtt(segments: TranscriptSegment[]) {
-  const cues = segments.map(
-    (s, i) =>
-      `${i + 1}\n${vttTimestamp(s.start)} --> ${vttTimestamp(s.end)}\n${s.text}`,
+function hasWordTimings(segments: TranscriptSegment[]) {
+  return (
+    segments.length > 0 &&
+    segments.every((s) => Array.isArray(s.words) && s.words.length > 0)
+  );
+}
+
+// Word-level path: Deepgram's own converter chunks each utterance's words into
+// lines of at most MAX_WORDS_PER_CUE, cueing on real per-word timestamps.
+function toVttFromWords(segments: TranscriptSegment[]) {
+  const utterances = segments.map((s) => ({
+    start: s.start,
+    end: s.end,
+    transcript: s.text,
+    words: s.words ?? [],
+    ...(s.speaker !== undefined ? { speaker: s.speaker } : {}),
+  }));
+  return `${webvtt({ results: { utterances } }, MAX_WORDS_PER_CUE)}\n`;
+}
+
+// Legacy path for recordings transcribed before word timings were stored:
+// split each utterance's text into ≤MAX_WORDS_PER_CUE cues with interpolated
+// timestamps.
+function splitSegmentIntoCues(segment: TranscriptSegment) {
+  const words = segment.text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= MAX_WORDS_PER_CUE) {
+    return [{ start: segment.start, end: segment.end, text: segment.text.trim() }];
+  }
+
+  const chunkCount = Math.ceil(words.length / MAX_WORDS_PER_CUE);
+  const wordsPerChunk = Math.ceil(words.length / chunkCount);
+  const duration = Math.max(0, segment.end - segment.start);
+
+  const cues = [];
+  for (let i = 0; i < words.length; i += wordsPerChunk) {
+    const chunkWords = words.slice(i, i + wordsPerChunk);
+    const start = segment.start + (duration * i) / words.length;
+    const end =
+      segment.start + (duration * Math.min(i + wordsPerChunk, words.length)) / words.length;
+    cues.push({ start, end, text: chunkWords.join(" ") });
+  }
+  return cues;
+}
+
+function toVttFromText(segments: TranscriptSegment[]) {
+  const cues = segments.flatMap(splitSegmentIntoCues).map(
+    (cue, i) =>
+      `${i + 1}\n${vttTimestamp(cue.start)} --> ${vttTimestamp(cue.end)}\n${cue.text}`,
   );
   return `WEBVTT\n\n${cues.join("\n\n")}\n`;
+}
+
+function toVtt(segments: TranscriptSegment[]) {
+  return hasWordTimings(segments)
+    ? toVttFromWords(segments)
+    : toVttFromText(segments);
 }
 
 export async function GET(

@@ -7,11 +7,20 @@ export type TranscriptStatus =
   | "ready"
   | "error";
 
+export type TranscriptWord = {
+  word: string;
+  start: number;
+  end: number;
+  punctuated_word?: string;
+  speaker?: number;
+};
+
 export type TranscriptSegment = {
   start: number;
   end: number;
   text: string;
   speaker?: number;
+  words?: TranscriptWord[];
 };
 
 export type Recording = {
