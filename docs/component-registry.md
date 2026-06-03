@@ -42,11 +42,16 @@ shadcn (radix): `button`, `input`, `label`, `select`, `card`, `badge`, `dialog`,
 - `save-dialog.tsx` — title input → duration-fixed upload → shareable link.
 
 ### `app/v/[slug]/_components/`
-- `video-player.tsx` — native `<video>` with a playback-speed control.
+- `video-context.tsx` — `VideoProvider` / `useVideoRef`; shares the `<video>` ref so the transcript can seek the player.
+- `video-player.tsx` — native `<video>` with a playback-speed control and a captions `<track>`.
+- `transcript-insights.tsx` — AI summary paragraph + topic chips (server component).
+- `transcript-panel.tsx` — searchable transcript; clickable timestamps seek the player, active line highlights on playback.
 - `share-bar.tsx` — copy link + visibility + Share button.
 - `share-dialog.tsx` — link / embed iframe / QR tabs + social share.
 - `password-gate.tsx` — password entry for protected recordings.
 - `view-beacon.tsx` — fires the view-count RPC once per viewer.
+
+`app/v/[slug]/captions/route.ts` — serves the WebVTT caption file (same-origin) from `transcript_segments`, re-checking visibility/expiry/password.
 
 ### `app/embed/[slug]/` — minimal full-bleed player for iframe embeds (public/unlisted only).
 

@@ -37,6 +37,10 @@ only after the request has been authorized by an RLS-gated row fetch. Never expo
 | `tags` | text[] default `'{}'` | GIN-indexed (0002) |
 | `share_password_hash` | text null | `salt:scryptHash`; verified server-side (0002) |
 | `expires_at` | timestamptz null | public reads stop after this (0002) |
+| `transcript_status` | text default `'none'` | `none` \| `pending` \| `processing` \| `ready` \| `error` (0003) |
+| `transcript_lang` | text null | Deepgram-detected language code (0003) |
+| `transcript_text` | text null | full transcript; FTS-indexed (0003) |
+| `transcript_segments` | jsonb null | array of `{ start, end, text, speaker? }` (0003) |
 
 ## Table: `collections` (0002)
 Folders. `id` uuid PK, `user_id` uuid → `auth.users`, `name` text, `created_at` timestamptz.
@@ -58,7 +62,17 @@ from the watch page via a client beacon with a per-viewer cookie de-dupe.
 - Storage: authenticated users may insert/select/delete objects under their own `<user_id>/` prefix
   in both buckets; `thumbnails` also allows public read.
 
+## Transcription (0003)
+On insert, a recording is created with `transcript_status = 'pending'`. A Supabase **Database Webhook**
+on `INSERT` into `public.recordings` invokes the `transcribe` edge function
+(`supabase/functions/transcribe/`), which mints a signed URL for the private webm and sends it to
+**Deepgram** (`nova-3`, `utterances`, `detect_language`). It writes `transcript_text` + per-utterance
+`transcript_segments` and flips the row to `ready` (or `error`). The watch page renders a `<track>`
+caption file from `/v/[slug]/captions` (built from the segments, same-origin) plus an interactive,
+searchable transcript panel. Full setup + secrets are in `docs/transcription.md`.
+
 ## Migrations
-SQL lives in `supabase/migrations/` (`0001_init_recordings.sql`, `0002_qol.sql`). Apply via the
-Supabase SQL editor, `supabase db push`, or the Supabase MCP. `0001` is applied; apply `0002` before
-using folders, tags, trash, view counts, vanity-slug redirects, or password/expiry links.
+SQL lives in `supabase/migrations/` (`0001_init_recordings.sql`, `0002_qol.sql`, `0003_transcripts.sql`).
+Apply via the Supabase SQL editor, `supabase db push`, or the Supabase MCP. `0001` is applied; apply
+`0002` before using folders, tags, trash, view counts, vanity-slug redirects, or password/expiry links;
+apply `0003` before using transcription.

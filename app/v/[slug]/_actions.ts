@@ -29,6 +29,39 @@ export async function setVisibility(
   return { ok: true };
 }
 
+export async function requestTranscription(slug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  // Flip to `pending` (clearing any stale result). The recordings UPDATE-to-pending
+  // trigger re-invokes the transcribe edge function. Idempotent: a row already
+  // pending/processing won't re-cross the trigger transition.
+  const { data, error } = await supabase
+    .from("recordings")
+    .update({
+      transcript_status: "pending",
+      transcript_text: null,
+      transcript_segments: null,
+      transcript_summary: null,
+      transcript_topics: null,
+      transcript_lang: null,
+    })
+    .eq("slug", slug)
+    .eq("user_id", user.id)
+    .not("transcript_status", "in", "(pending,processing)")
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Already transcribing, or not your recording." };
+
+  revalidatePath(`/v/${slug}`);
+  return { ok: true };
+}
+
 export async function recordView(slug: string) {
   const store = await cookies();
   const key = `tv_view_${slug}`;

@@ -11,7 +11,10 @@ import {
   THUMBNAILS_BUCKET,
   type Recording,
 } from "@/lib/types";
+import { VideoProvider } from "./_components/video-context";
 import { VideoPlayer } from "./_components/video-player";
+import { TranscriptInsights } from "./_components/transcript-insights";
+import { TranscriptPanel } from "./_components/transcript-panel";
 import { ShareBar } from "./_components/share-bar";
 import { ViewBeacon } from "./_components/view-beacon";
 import { PasswordGate } from "./_components/password-gate";
@@ -126,43 +129,63 @@ export default async function WatchPage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-        <VideoPlayer
-          src={signed.signedUrl}
-          title={recording.title}
-          poster={poster}
-        />
-
-        <div className="mt-5 flex flex-col gap-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">
-              {recording.title}
-            </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
-              <span>
-                {new Date(recording.created_at).toLocaleDateString(undefined, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
-              {recording.duration_seconds ? (
-                <span>· {formatDuration(recording.duration_seconds)}</span>
-              ) : null}
-              {isOwner ? (
-                <span className="inline-flex items-center gap-1">
-                  · <Eye className="size-3.5" /> {recording.view_count} views
-                </span>
-              ) : null}
-            </p>
-          </div>
-
-          <ShareBar
-            slug={recording.slug}
+        <VideoProvider>
+          <VideoPlayer
+            src={signed.signedUrl}
             title={recording.title}
-            visibility={recording.visibility}
-            isOwner={isOwner}
+            poster={poster}
+            captionsSrc={
+              recording.transcript_status === "ready"
+                ? `/v/${recording.slug}/captions`
+                : null
+            }
           />
-        </div>
+
+          <div className="mt-5 flex flex-col gap-4">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">
+                {recording.title}
+              </h1>
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                <span>
+                  {new Date(recording.created_at).toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+                {recording.duration_seconds ? (
+                  <span>· {formatDuration(recording.duration_seconds)}</span>
+                ) : null}
+                {isOwner ? (
+                  <span className="inline-flex items-center gap-1">
+                    · <Eye className="size-3.5" /> {recording.view_count} views
+                  </span>
+                ) : null}
+              </p>
+            </div>
+
+            <ShareBar
+              slug={recording.slug}
+              title={recording.title}
+              visibility={recording.visibility}
+              isOwner={isOwner}
+            />
+
+            <TranscriptInsights
+              status={recording.transcript_status}
+              summary={recording.transcript_summary}
+              topics={recording.transcript_topics}
+            />
+
+            <TranscriptPanel
+              status={recording.transcript_status}
+              segments={recording.transcript_segments}
+              isOwner={isOwner}
+              slug={recording.slug}
+            />
+          </div>
+        </VideoProvider>
       </main>
 
       {!isOwner ? <ViewBeacon slug={recording.slug} /> : null}

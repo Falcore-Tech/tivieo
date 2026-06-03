@@ -13,6 +13,7 @@
 - **Player**: native styled `<video controls>` (`app/v/[slug]/_components/video-player.tsx`). Reliable for browser-recorded webm.
 - **Upload**: resumable via `tus-js-client` to Supabase Storage; signed URLs for private playback.
 - **Links**: title-derived slug — `slugify(title)-<nanoid(6)>`. Slug edits preserve old links via the `recording_aliases` table (308 redirect on the watch page).
+- **Transcription**: async via a Supabase **Database Webhook** (INSERT on `recordings`) → `transcribe` edge function (`supabase/functions/transcribe/`) → **Deepgram** `/v1/listen` (`nova-3`, `utterances`, `detect_language`, `summarize=v2`, `topics=true`). Stores `transcript_text`/`_segments`/`_summary`/`_topics` and a `transcript_status` machine (`none→pending→processing→ready/error`). Deepgram summary+topics are **English-only**; the function retries transcript-only on failure so transcription never breaks. Watch page renders a same-origin WebVTT `<track>` (`/v/[slug]/captions`), an AI summary + topic chips, and a searchable transcript (clickable timestamps seek the shared `<video>` ref via `VideoProvider`). Setup/secrets/webhook steps in `docs/transcription.md`.
 - See `/docs` for full detail.
 
 ## Preferences & Rules
@@ -50,4 +51,5 @@ See `docs/supabase-schema.md`.
 
 ## Current State
 - Core app built: home (dashboard for authed users, landing for logged-out), auth (`/login`, `/auth/confirm`, `/auth/signout`), recorder studio (`/record`), upload + link minting, watch page (`/v/[slug]`), library with per-recording management.
-- DB: migration `0001` (recordings table + buckets) is applied. `0002` (QOL columns + collections/aliases tables + view-count RPC) must be applied via the Supabase SQL editor.
+- Transcription/summary/topics **live** (Deepgram) on project `ewmitykmynlvlstnabjy`. Watch page shows captions + AI summary + topic chips + searchable transcript. Owner gets a Transcribe/Retry button on `none`/`error`; panel auto-refreshes while processing. Re-trigger is the `transcribe_on_repend` UPDATE→pending trigger; the webhook secret lives in Supabase Vault (`transcribe_webhook_secret`).
+- DB: migrations `0001` (recordings + buckets) applied; `0002` (QOL) applied; `0003` (transcript columns + FTS) and `0004` (pg_net + transcribe triggers) applied. The edge function `transcribe` is deployed with `DEEPGRAM_API_KEY` + `TRANSCRIBE_WEBHOOK_SECRET` secrets set. Full setup + reproduction steps in `docs/transcription.md`.

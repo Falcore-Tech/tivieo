@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useVideoRef } from "./video-context";
 
 const SPEEDS = [0.5, 1, 1.5, 2];
 
@@ -9,10 +10,11 @@ type Props = {
   src: string;
   title: string;
   poster?: string | null;
+  captionsSrc?: string | null;
 };
 
-export function VideoPlayer({ src, title, poster }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export function VideoPlayer({ src, title, poster, captionsSrc }: Props) {
+  const videoRef = useVideoRef();
   const [speed, setSpeed] = useState(1);
 
   function changeSpeed(value: number) {
@@ -32,6 +34,15 @@ export function VideoPlayer({ src, title, poster }: Props) {
         className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-neutral-950"
       >
         <source src={src} type="video/webm" />
+        {captionsSrc ? (
+          <track
+            kind="captions"
+            src={captionsSrc}
+            srcLang="en"
+            label="Captions"
+            default
+          />
+        ) : null}
         Your browser doesn&apos;t support embedded video.
       </video>
 

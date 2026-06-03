@@ -36,6 +36,7 @@ export async function createRecording(input: CreateRecordingInput) {
       duration_seconds: input.durationSeconds,
       size_bytes: input.sizeBytes,
       status: "ready",
+      transcript_status: "pending",
     });
 
     if (!error) {
