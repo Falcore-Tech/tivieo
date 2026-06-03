@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export async function SiteHeader() {
   const supabase = await createClient();
@@ -20,10 +21,11 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="flex items-center gap-2">
+          <ThemeToggle />
           {user ? (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/">Library</Link>
               </Button>
               <Button asChild size="sm">
                 <Link href="/record">New recording</Link>

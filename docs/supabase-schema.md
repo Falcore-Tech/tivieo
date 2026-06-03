@@ -30,13 +30,35 @@ only after the request has been authorized by an RLS-gated row fetch. Never expo
 | `visibility` | text default `'unlisted'` | `public` \| `unlisted` \| `private` |
 | `status` | text default `'ready'` | `uploading` \| `ready` \| `error` |
 | `created_at` | timestamptz default `now()` | |
+| `updated_at` | timestamptz default `now()` | set on every edit (0002) |
+| `deleted_at` | timestamptz null | soft-delete / Trash (0002) |
+| `view_count` | bigint default `0` | incremented by RPC (0002) |
+| `collection_id` | uuid → `collections` null | folder, `on delete set null` (0002) |
+| `tags` | text[] default `'{}'` | GIN-indexed (0002) |
+| `share_password_hash` | text null | `salt:scryptHash`; verified server-side (0002) |
+| `expires_at` | timestamptz null | public reads stop after this (0002) |
+
+## Table: `collections` (0002)
+Folders. `id` uuid PK, `user_id` uuid → `auth.users`, `name` text, `created_at` timestamptz.
+
+## Table: `recording_aliases` (0002)
+Old-slug history so renamed share links keep resolving. `old_slug` text PK, `recording_id` uuid →
+`recordings on delete cascade`. The watch page falls back to this and 308-redirects to the live slug.
+
+## RPC: `increment_recording_view(p_slug text)` (0002)
+`security definer`; increments `view_count` only for non-deleted, non-expired, shared rows. Called
+from the watch page via a client beacon with a per-viewer cookie de-dupe.
 
 ## RLS (row level security)
 - Owners: full CRUD where `auth.uid() = user_id`.
-- Anyone may `SELECT` a row by slug where `visibility IN ('public','unlisted')` (link sharing).
+- Anyone may `SELECT` a shared row where `visibility IN ('public','unlisted')` **and** `deleted_at is null`
+  **and** (`expires_at is null` or `expires_at > now()`) (0002 tightened this).
+- `collections`: owner-only. `recording_aliases`: public `SELECT` (for redirects); writes go through the
+  admin client in server actions.
 - Storage: authenticated users may insert/select/delete objects under their own `<user_id>/` prefix
   in both buckets; `thumbnails` also allows public read.
 
-## Migration
-SQL lives in `supabase/migrations/`. Apply via the Supabase SQL editor, `supabase db push`, or the
-Supabase MCP. Buckets can be created in the dashboard or via the storage API in the same migration.
+## Migrations
+SQL lives in `supabase/migrations/` (`0001_init_recordings.sql`, `0002_qol.sql`). Apply via the
+Supabase SQL editor, `supabase db push`, or the Supabase MCP. `0001` is applied; apply `0002` before
+using folders, tags, trash, view counts, vanity-slug redirects, or password/expiry links.

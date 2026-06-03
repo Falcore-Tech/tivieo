@@ -13,9 +13,9 @@ type Options = {
 
 // Fixed output size. The canvas must NOT be resized after captureStream() is
 // called — doing so ends the captured track on Firefox. drawCover() scales the
-// screen/webcam to fit, so a constant 720p surface works for any source size.
-const OUTPUT_WIDTH = 1280;
-const OUTPUT_HEIGHT = 720;
+// screen/webcam to fit, so a constant 1080p surface works for any source size.
+const OUTPUT_WIDTH = 1920;
+const OUTPUT_HEIGHT = 1080;
 
 function drawCover(
   ctx: CanvasRenderingContext2D,
@@ -194,13 +194,6 @@ export function useCanvasCompositor({
       const canvas = canvasRef.current;
       if (!canvas) return null;
       const stream = canvas.captureStream(fps);
-      const track = stream.getVideoTracks()[0];
-      console.log("[compositor] captured video track:", {
-        readyState: track?.readyState,
-        muted: track?.muted,
-        settings: track?.getSettings(),
-        canvas: { width: canvas.width, height: canvas.height },
-      });
       return stream;
     },
     [canvasRef],

@@ -10,7 +10,7 @@ export default async function LoginPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect("/");
 
   return (
     <main className="flex min-h-svh items-center justify-center p-6">

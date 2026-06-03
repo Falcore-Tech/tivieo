@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
+import { formatDuration } from "@/lib/utils";
 import { useMediaStreams } from "../_hooks/use-media-streams";
 import { useCanvasCompositor } from "../_hooks/use-canvas-compositor";
 import { useRecorder } from "../_hooks/use-recorder";
@@ -77,9 +78,7 @@ export function RecorderStudio({ userId }: { userId: string }) {
 
   const handleStop = useCallback(async () => {
     const poster = compositor.capturePoster();
-    console.log("poster: ", poster);
     const blob = await recorder.stop();
-    console.log("blob: ", blob);
     audioCleanupRef.current();
     audioCleanupRef.current = () => {};
     if (!blob) {
@@ -93,8 +92,6 @@ export function RecorderStudio({ userId }: { userId: string }) {
     });
     setPhase("review");
   }, [compositor, recorder]);
-  console.log("Result: ", result);
-  console.log("Phase: ", phase);
 
   const handleRecordAgain = useCallback(() => {
     setResult(null);

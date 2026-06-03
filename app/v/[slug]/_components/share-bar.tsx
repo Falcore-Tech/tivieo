@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Copy, Globe, Link2, Lock } from "lucide-react";
+import { Check, Copy, Globe, Link2, Lock, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import type { RecordingVisibility } from "@/lib/types";
 import { setVisibility } from "../_actions";
+import { ShareDialog } from "./share-dialog";
 
 const VISIBILITY_META: Record<
   RecordingVisibility,
@@ -26,13 +27,15 @@ const VISIBILITY_META: Record<
 
 type Props = {
   slug: string;
+  title: string;
   visibility: RecordingVisibility;
   isOwner: boolean;
 };
 
-export function ShareBar({ slug, visibility, isOwner }: Props) {
+export function ShareBar({ slug, title, visibility, isOwner }: Props) {
   const [current, setCurrent] = useState(visibility);
   const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const Meta = VISIBILITY_META[current];
@@ -72,11 +75,13 @@ export function ShareBar({ slug, visibility, isOwner }: Props) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(Object.keys(VISIBILITY_META) as RecordingVisibility[]).map((key) => (
-              <SelectItem key={key} value={key}>
-                {VISIBILITY_META[key].label}
-              </SelectItem>
-            ))}
+            {(Object.keys(VISIBILITY_META) as RecordingVisibility[]).map(
+              (key) => (
+                <SelectItem key={key} value={key}>
+                  {VISIBILITY_META[key].label}
+                </SelectItem>
+              ),
+            )}
           </SelectContent>
         </Select>
       ) : (
@@ -86,10 +91,22 @@ export function ShareBar({ slug, visibility, isOwner }: Props) {
         </Badge>
       )}
 
-      <Button variant="secondary" size="sm" onClick={handleCopy}>
-        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-        Copy link
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" size="sm" onClick={handleCopy}>
+          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          Copy link
+        </Button>
+        <Button size="sm" onClick={() => setShareOpen(true)}>
+          <Share2 className="size-4" /> Share
+        </Button>
+      </div>
+
+      <ShareDialog
+        slug={slug}
+        title={title}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
     </div>
   );
 }

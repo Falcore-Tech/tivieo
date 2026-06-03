@@ -14,7 +14,7 @@ type Mode = "sign-in" | "sign-up";
 export function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = searchParams.get("next") ?? "/";
 
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");

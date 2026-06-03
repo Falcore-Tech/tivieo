@@ -14,6 +14,13 @@ function pickMimeType() {
   );
 }
 
+// Explicit bitrates so file size is predictable instead of browser-default.
+// 1 Mbps video + 128 kbps audio ≈ 8.5 MB/min → a 5-min take lands ~42MB,
+// under Supabase free-tier's 50MB per-file cap. VP9 keeps 1080p screen text
+// legible at this rate since mostly-static frames compress well below the cap.
+const VIDEO_BITS_PER_SECOND = 1_000_000;
+const AUDIO_BITS_PER_SECOND = 128_000;
+
 export function useRecorder() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -36,41 +43,26 @@ export function useRecorder() {
     async (stream: MediaStream) => {
       if (recorderRef.current) return;
       const mimeType = pickMimeType();
-      console.log(
-        "[recorder] start; mimeType:",
-        mimeType || "(browser default)",
-        "tracks:",
-        stream.getTracks().map((t) => ({
-          kind: t.kind,
-          readyState: t.readyState,
-          enabled: t.enabled,
-        })),
-      );
-
-      const videoTrack = stream.getVideoTracks()[0];
-      console.log("[recorder] video track settings:", videoTrack?.getSettings());
-
       chunksRef.current = [];
+      const recorderOptions: MediaRecorderOptions = {
+        videoBitsPerSecond: VIDEO_BITS_PER_SECOND,
+        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+      };
+      if (mimeType) recorderOptions.mimeType = mimeType;
       let recorder: MediaRecorder;
       try {
-        recorder = new MediaRecorder(
-          stream,
-          mimeType ? { mimeType } : undefined,
-        );
-      } catch (error) {
-        console.warn("[recorder] mimeType rejected, using default:", error);
-        recorder = new MediaRecorder(stream);
+        recorder = new MediaRecorder(stream, recorderOptions);
+      } catch {
+        recorder = new MediaRecorder(stream, {
+          videoBitsPerSecond: VIDEO_BITS_PER_SECOND,
+          audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+        });
       }
       recorder.ondataavailable = (event) => {
-        console.log("[recorder] dataavailable; size:", event.data?.size ?? 0);
         if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
-      recorder.onerror = (event) =>
-        console.error("[recorder] error:", (event as ErrorEvent).error ?? event);
-      recorder.onstart = () =>
-        console.log("[recorder] onstart; state:", recorder.state);
 
       recorderRef.current = recorder;
       setElapsedSeconds(0);
@@ -113,7 +105,6 @@ export function useRecorder() {
         if (settled) return;
         settled = true;
         const result = buildBlob(recorder);
-        console.log("[recorder] final blob size:", result?.size ?? 0);
         resolve(result);
       };
       recorder.onstop = finish;

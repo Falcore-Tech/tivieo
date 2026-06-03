@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import fixWebmDuration from "fix-webm-duration";
 import { uploadRecording } from "../_lib/upload";
 import { createRecording } from "../_actions";
 import type { RecordingResult } from "../_types";
@@ -55,9 +56,14 @@ export function SaveDialog({ open, result, userId, onRecordAgain }: Props) {
     setStage("uploading");
     setProgress(0);
     try {
+      const playableBlob = await fixWebmDuration(
+        result.blob,
+        Math.round(result.durationSeconds * 1000),
+        { logger: false },
+      ).catch(() => result.blob);
       const upload = await uploadRecording({
         userId,
-        blob: result.blob,
+        blob: playableBlob,
         posterDataUrl: result.posterDataUrl,
         onProgress: setProgress,
       });

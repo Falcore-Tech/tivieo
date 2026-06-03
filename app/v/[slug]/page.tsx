@@ -1,9 +1,11 @@
-import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
+import { CalendarX, Eye } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SiteHeader } from "@/components/site-header";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, isExpired } from "@/lib/utils";
 import {
   RECORDINGS_BUCKET,
   THUMBNAILS_BUCKET,
@@ -11,21 +13,27 @@ import {
 } from "@/lib/types";
 import { VideoPlayer } from "./_components/video-player";
 import { ShareBar } from "./_components/share-bar";
+import { ViewBeacon } from "./_components/view-beacon";
+import { PasswordGate } from "./_components/password-gate";
 
-async function getRecording(slug: string) {
+async function fetchBySlug(slug: string) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data } = await supabase
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("recordings")
     .select("*")
     .eq("slug", slug)
     .maybeSingle<Recording>();
+  return { user, recording: data, admin };
+}
 
-  if (!data) return null;
-  if (data.visibility === "private" && data.user_id !== user?.id) return null;
-  return { recording: data, isOwner: data.user_id === user?.id };
+function isVisibleTo(recording: Recording, userId: string | undefined) {
+  if (recording.deleted_at) return false;
+  if (recording.visibility === "private") return recording.user_id === userId;
+  return true;
 }
 
 export async function generateMetadata({
@@ -34,9 +42,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const found = await getRecording(slug);
-  if (!found) return { title: "Recording not found · Tivieo" };
-  return { title: `${found.recording.title} · Tivieo` };
+  const { user, recording } = await fetchBySlug(slug);
+  if (!recording || !isVisibleTo(recording, user?.id)) {
+    return { title: "Recording not found · Tivieo" };
+  }
+  return { title: `${recording.title} · Tivieo` };
 }
 
 export default async function WatchPage({
@@ -45,15 +55,65 @@ export default async function WatchPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const found = await getRecording(slug);
-  if (!found) notFound();
+  const { user, recording, admin } = await fetchBySlug(slug);
 
-  const { recording, isOwner } = found;
-  const admin = createAdminClient();
+  if (!recording) {
+    const { data: alias } = await admin
+      .from("recording_aliases")
+      .select("recording_id")
+      .eq("old_slug", slug)
+      .maybeSingle<{ recording_id: string }>();
+    if (alias) {
+      const { data: target } = await admin
+        .from("recordings")
+        .select("slug, deleted_at")
+        .eq("id", alias.recording_id)
+        .maybeSingle<Pick<Recording, "slug" | "deleted_at">>();
+      if (target && !target.deleted_at) permanentRedirect(`/v/${target.slug}`);
+    }
+    notFound();
+  }
+
+  const isOwner = recording.user_id === user?.id;
+  if (!isVisibleTo(recording, user?.id)) notFound();
+
+  const expired = isExpired(recording.expires_at);
+
+  if (expired && !isOwner) {
+    return (
+      <>
+        <SiteHeader />
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+            <CalendarX className="size-6" />
+          </span>
+          <h1 className="text-lg font-semibold">This link has expired</h1>
+          <p className="text-sm text-muted-foreground">
+            The owner set this recording to stop being shareable.
+          </p>
+        </main>
+      </>
+    );
+  }
+
+  const needsPassword = Boolean(recording.share_password_hash) && !isOwner;
+  if (needsPassword) {
+    const store = await cookies();
+    if (!store.get(`tv_pw_${recording.id}`)) {
+      return (
+        <>
+          <SiteHeader />
+          <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-16 sm:px-6">
+            <PasswordGate slug={recording.slug} />
+          </main>
+        </>
+      );
+    }
+  }
+
   const { data: signed } = await admin.storage
     .from(RECORDINGS_BUCKET)
     .createSignedUrl(recording.storage_path, 60 * 60 * 2);
-
   if (!signed?.signedUrl) notFound();
 
   const poster = recording.thumbnail_path
@@ -77,25 +137,35 @@ export default async function WatchPage({
             <h1 className="text-xl font-semibold tracking-tight">
               {recording.title}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {new Date(recording.created_at).toLocaleDateString(undefined, {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-              {recording.duration_seconds
-                ? ` · ${formatDuration(recording.duration_seconds)}`
-                : ""}
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+              <span>
+                {new Date(recording.created_at).toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+              {recording.duration_seconds ? (
+                <span>· {formatDuration(recording.duration_seconds)}</span>
+              ) : null}
+              {isOwner ? (
+                <span className="inline-flex items-center gap-1">
+                  · <Eye className="size-3.5" /> {recording.view_count} views
+                </span>
+              ) : null}
             </p>
           </div>
 
           <ShareBar
             slug={recording.slug}
+            title={recording.title}
             visibility={recording.visibility}
             isOwner={isOwner}
           />
         </div>
       </main>
+
+      {!isOwner ? <ViewBeacon slug={recording.slug} /> : null}
     </>
   );
 }
