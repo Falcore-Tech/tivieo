@@ -44,6 +44,26 @@ export function RecorderStudio({ userId }: { userId: string }) {
     void enableCamera();
   }, [enableCamera]);
 
+  const baseTitleRef = useRef("");
+  useEffect(() => {
+    baseTitleRef.current = document.title;
+    return () => {
+      document.title = baseTitleRef.current;
+    };
+  }, []);
+
+  useEffect(() => {
+    const base = baseTitleRef.current || document.title;
+    const elapsed = formatDuration(recorder.elapsedSeconds);
+    if (phase === "recording") {
+      document.title = `\u{1F534} ${elapsed} · ${base}`;
+    } else if (phase === "paused") {
+      document.title = `⏸ ${elapsed} · ${base}`;
+    } else {
+      document.title = base;
+    }
+  }, [phase, recorder.elapsedSeconds]);
+
   const beginRecording = useCallback(async () => {
     const compositeStream = compositor.getCompositeStream(30);
     const videoTrack = compositeStream?.getVideoTracks()[0];
