@@ -3,8 +3,19 @@ import { Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
 
-export async function SiteHeader() {
+export async function SiteHeader({
+  containerClassName,
+  actions,
+  minimal = false,
+  title,
+}: {
+  containerClassName?: string;
+  actions?: React.ReactNode;
+  minimal?: boolean;
+  title?: string;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -12,17 +23,33 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Video className="size-4" />
-          </span>
-          <span className="font-semibold tracking-tight">Tivieo</span>
-        </Link>
+      <div
+        className={cn(
+          "mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6",
+          containerClassName,
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
+            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Video className="size-4" />
+            </span>
+            <span className="font-semibold tracking-tight max-sm:hidden">
+              Tivieo
+            </span>
+          </Link>
+          {title ? (
+            <>
+              <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
+              <span className="truncate text-sm font-medium">{title}</span>
+            </>
+          ) : null}
+        </div>
 
-        <nav className="flex items-center gap-2">
+        <nav className="flex shrink-0 items-center gap-2">
+          {actions}
           <ThemeToggle />
-          {user ? (
+          {minimal ? null : user ? (
             <>
               <Button asChild variant="ghost" size="sm">
                 <Link href="/">Library</Link>

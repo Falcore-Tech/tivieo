@@ -40,6 +40,46 @@ export function isExpired(expiresAt: string | null) {
   return new Date(expiresAt).getTime() < Date.now();
 }
 
+const RELATIVE_DIVISIONS: { amount: number; unit: Intl.RelativeTimeFormatUnit }[] =
+  [
+    { amount: 60, unit: "second" },
+    { amount: 60, unit: "minute" },
+    { amount: 24, unit: "hour" },
+    { amount: 7, unit: "day" },
+  ];
+
+export function formatRelativeDate(iso: string) {
+  const date = new Date(iso);
+  const diffSeconds = (date.getTime() - Date.now()) / 1000;
+
+  const absDays = Math.abs(diffSeconds) / 86_400;
+  if (absDays >= 7) {
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  let value = diffSeconds;
+  for (const division of RELATIVE_DIVISIONS) {
+    if (Math.abs(value) < division.amount) {
+      return formatter.format(Math.round(value), division.unit);
+    }
+    value /= division.amount;
+  }
+  return formatter.format(Math.round(value), "day");
+}
+
+export function absoluteDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function dateGroupLabel(iso: string) {
   const date = new Date(iso);
   const startOfDay = (d: Date) =>

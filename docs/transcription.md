@@ -21,14 +21,21 @@ topic chips, and an interactive searchable transcript.
    - **Speaker naming:** Deepgram phrases its summary with generic labels (`Speaker 0`,
      `Speaker 1`, …). `personalizeSummary()` rewrites any `Speaker N` label to the owner's name
      (`SPEAKER_NAME = "Faez"` in `index.ts`) before storing, since these are single-speaker recordings.
-4. It writes `transcript_text`, `transcript_segments` (`{start,end,text,speaker?}`),
-   `transcript_summary`, `transcript_topics`, and flips `transcript_status` to `ready`
-   (or `error` on failure).
+4. It writes `transcript_text`, `transcript_segments` (`{start,end,text,speaker?,words?}` —
+   each utterance keeps its Deepgram `words[]` of `{word,start,end,punctuated_word?,speaker?}`
+   for word-accurate caption timing), `transcript_summary`, `transcript_topics`, and flips
+   `transcript_status` to `ready` (or `error` on failure).
 5. The watch page (`/v/[slug]`) renders:
-   - a `<track>` caption file from `/v/[slug]/captions/route.ts` (WebVTT built from segments, same-origin so no CORS),
-   - `TranscriptInsights` — AI summary + topic chips,
+   - a `<track>` caption file from `/v/[slug]/captions/route.ts`. The route converts segments to
+     WebVTT same-origin (no CORS) with **Deepgram's own `@deepgram/captions` `webvtt()`**, passing
+     `lineLength = 10` so every cue is **at most 10 words** (long utterances are split on real
+     per-word timestamps — no 3-line subtitles). Recordings transcribed before word timings were
+     stored have no `words[]`, so the route falls back to splitting the utterance text into ≤10-word
+     cues with interpolated timestamps; **re-transcribe** them (Retry button / `requestTranscription`)
+     to get exact word timing.
+   - `RecordingSummary` — the AI summary (description) + topic chips, shown in the sidebar's **Summary** tab; owner-editable inline (`updateSummary`),
    - `TranscriptPanel` — searchable transcript with clickable timestamps that seek the player
-     (shared video ref via `VideoProvider` / `useVideoRef`).
+     (shared video ref via `VideoProvider` / `useVideoRef`), shown in the sidebar's **Transcript** tab.
 
 ## Manual (re)transcription
 

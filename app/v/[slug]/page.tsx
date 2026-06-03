@@ -6,13 +6,21 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { presignGetUrl, publicThumbnailUrl } from "@/lib/r2";
 import { SiteHeader } from "@/components/site-header";
-import { formatDuration, isExpired } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  absoluteDate,
+  formatDuration,
+  formatRelativeDate,
+  isExpired,
+} from "@/lib/utils";
 import { type Recording } from "@/lib/types";
 import { VideoProvider } from "./_components/video-context";
 import { VideoPlayer } from "./_components/video-player";
-import { TranscriptInsights } from "./_components/transcript-insights";
+import { EditableTitle } from "./_components/editable-title";
+import { RecordingSummary } from "./_components/recording-summary";
 import { TranscriptPanel } from "./_components/transcript-panel";
 import { ShareBar } from "./_components/share-bar";
+import { WatchActions } from "./_components/watch-actions";
 import { ViewBeacon } from "./_components/view-beacon";
 import { PasswordGate } from "./_components/password-gate";
 
@@ -117,65 +125,114 @@ export default async function WatchPage({
     ? publicThumbnailUrl(recording.thumbnail_path)
     : null;
 
+  const hasTranscriptTab = !(
+    recording.transcript_status === "none" && !isOwner
+  );
+
   return (
     <>
-      <SiteHeader />
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
+      <SiteHeader
+        minimal
+        title={recording.title}
+        containerClassName="max-w-[1760px] lg:px-8"
+        actions={<WatchActions slug={recording.slug} title={recording.title} />}
+      />
+      <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <VideoProvider>
-          <VideoPlayer
-            src={videoUrl}
-            title={recording.title}
-            poster={poster}
-            captionsSrc={
-              recording.transcript_status === "ready"
-                ? `/v/${recording.slug}/captions`
-                : null
-            }
-          />
+          {expired && isOwner ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning-500/30 bg-warning-500/10 px-3 py-2 text-sm text-warning-700 dark:text-warning-300">
+              <CalendarX className="size-4 shrink-0" />
+              <span>
+                This link has expired. Only you can see this page; viewers get an
+                expired notice.
+              </span>
+            </div>
+          ) : null}
 
-          <div className="mt-5 flex flex-col gap-4">
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight">
-                {recording.title}
-              </h1>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
-                <span>
-                  {new Date(recording.created_at).toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </span>
-                {recording.duration_seconds ? (
-                  <span>· {formatDuration(recording.duration_seconds)}</span>
-                ) : null}
-                {isOwner ? (
-                  <span className="inline-flex items-center gap-1">
-                    · <Eye className="size-3.5" /> {recording.view_count} views
-                  </span>
-                ) : null}
-              </p>
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 xl:grid-cols-[minmax(0,1fr)_440px] xl:gap-8">
+            <div className="min-w-0">
+              <VideoPlayer
+                src={videoUrl}
+                title={recording.title}
+                poster={poster}
+                captionsSrc={
+                  recording.transcript_status === "ready"
+                    ? `/v/${recording.slug}/captions`
+                    : null
+                }
+              />
             </div>
 
-            <ShareBar
-              slug={recording.slug}
-              title={recording.title}
-              visibility={recording.visibility}
-              isOwner={isOwner}
-            />
+            <aside className="mt-5 flex flex-col gap-4 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
+              <div className="flex flex-col gap-1.5">
+                <EditableTitle
+                  slug={recording.slug}
+                  value={recording.title}
+                  canEdit={isOwner}
+                />
+                <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                  <span title={absoluteDate(recording.created_at)}>
+                    {formatRelativeDate(recording.created_at)}
+                  </span>
+                  {recording.duration_seconds ? (
+                    <span>· {formatDuration(recording.duration_seconds)}</span>
+                  ) : null}
+                  {isOwner ? (
+                    <span className="inline-flex items-center gap-1">
+                      · <Eye className="size-3.5" /> {recording.view_count} views
+                    </span>
+                  ) : null}
+                </p>
+              </div>
 
-            <TranscriptInsights
-              status={recording.transcript_status}
-              summary={recording.transcript_summary}
-              topics={recording.transcript_topics}
-            />
+              <ShareBar
+                slug={recording.slug}
+                visibility={recording.visibility}
+                isOwner={isOwner}
+              />
 
-            <TranscriptPanel
-              status={recording.transcript_status}
-              segments={recording.transcript_segments}
-              isOwner={isOwner}
-              slug={recording.slug}
-            />
+              {hasTranscriptTab ? (
+                <Tabs defaultValue="summary" className="gap-3">
+                  <TabsList className="w-full">
+                    <TabsTrigger
+                      value="summary"
+                      className="flex-1 data-active:bg-card data-active:shadow-sm dark:data-active:bg-neutral-700"
+                    >
+                      Summary
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="transcript"
+                      className="flex-1 data-active:bg-card data-active:shadow-sm dark:data-active:bg-neutral-700"
+                    >
+                      Transcript
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="summary">
+                    <RecordingSummary
+                      slug={recording.slug}
+                      summary={recording.transcript_summary}
+                      topics={recording.transcript_topics}
+                      canEdit={isOwner}
+                    />
+                  </TabsContent>
+                  <TabsContent value="transcript">
+                    <TranscriptPanel
+                      status={recording.transcript_status}
+                      segments={recording.transcript_segments}
+                      isOwner={isOwner}
+                      slug={recording.slug}
+                    />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <RecordingSummary
+                  slug={recording.slug}
+                  summary={recording.transcript_summary}
+                  topics={recording.transcript_topics}
+                  canEdit={isOwner}
+                />
+              )}
+            </aside>
           </div>
         </VideoProvider>
       </main>

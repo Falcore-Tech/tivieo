@@ -9,8 +9,10 @@ import {
   Loader2,
   RotateCw,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { TranscriptSegment, TranscriptStatus } from "@/lib/types";
 import { requestTranscription } from "../_actions";
 import { useVideoRef } from "./video-context";
@@ -112,6 +114,7 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
     return (
       <PanelShell>
         <EmptyPrompt
+          icon={Sparkles}
           message="This recording hasn't been transcribed yet."
           actionLabel="Transcribe"
           busy={isStarting}
@@ -124,10 +127,11 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
   if (inProgress) {
     return (
       <PanelShell>
-        <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
           Transcribing this recording…
         </div>
+        <TranscriptSkeleton />
       </PanelShell>
     );
   }
@@ -137,6 +141,7 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
       <PanelShell>
         {isOwner ? (
           <EmptyPrompt
+            icon={RotateCw}
             message="Transcription failed for this recording."
             actionLabel="Retry"
             busy={isStarting}
@@ -186,12 +191,21 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search transcript"
+            aria-label="Search transcript"
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
+          {query.trim() ? (
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              {filtered.length} {filtered.length === 1 ? "match" : "matches"}
+            </span>
+          ) : null}
         </div>
       </div>
 
-      <ul ref={listRef} className="max-h-96 overflow-y-auto py-1">
+      <ul
+        ref={listRef}
+        className="max-h-96 overflow-y-auto py-1 lg:max-h-[calc(100svh-23rem)]"
+      >
         {filtered.length === 0 ? (
           <li className="px-4 py-6 text-sm text-muted-foreground">
             No matches for “{query.trim()}”.
@@ -230,11 +244,13 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
 }
 
 function EmptyPrompt({
+  icon: Icon,
   message,
   actionLabel,
   busy,
   onAction,
 }: {
+  icon: typeof FileText;
   message: string;
   actionLabel: string;
   busy: boolean;
@@ -255,10 +271,32 @@ function EmptyPrompt({
         {busy ? (
           <Loader2 className="size-3.5 animate-spin" />
         ) : (
-          <RotateCw className="size-3.5" />
+          <Icon className="size-3.5" />
         )}
         {actionLabel}
       </button>
+    </div>
+  );
+}
+
+const SKELETON_ROWS = [
+  "w-[78%]",
+  "w-[92%]",
+  "w-[64%]",
+  "w-[85%]",
+  "w-[71%]",
+  "w-[88%]",
+];
+
+function TranscriptSkeleton() {
+  return (
+    <div className="space-y-4 px-4 py-4">
+      {SKELETON_ROWS.map((width, index) => (
+        <div key={index} className="flex gap-3">
+          <Skeleton className="mt-0.5 h-3 w-8 shrink-0" />
+          <Skeleton className={cn("h-3", width)} />
+        </div>
+      ))}
     </div>
   );
 }

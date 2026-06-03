@@ -29,6 +29,51 @@ export async function setVisibility(
   return { ok: true };
 }
 
+export async function updateTitle(slug: string, title: string) {
+  const trimmed = title.trim();
+  if (!trimmed) return { error: "Title cannot be empty." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const { error } = await supabase
+    .from("recordings")
+    .update({ title: trimmed, updated_at: new Date().toISOString() })
+    .eq("slug", slug)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/v/${slug}`);
+  revalidatePath("/");
+  return { ok: true, title: trimmed };
+}
+
+export async function updateSummary(slug: string, summary: string) {
+  const trimmed = summary.trim();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const { error } = await supabase
+    .from("recordings")
+    .update({
+      transcript_summary: trimmed || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("slug", slug)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/v/${slug}`);
+  return { ok: true, summary: trimmed };
+}
+
 export async function requestTranscription(slug: string) {
   const supabase = await createClient();
   const {

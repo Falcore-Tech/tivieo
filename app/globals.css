@@ -103,6 +103,9 @@
   --sidebar-accent-foreground: var(--primary-700);
   --sidebar-border: var(--neutral-200);
   --sidebar-ring: var(--primary-500);
+
+  /* Near-black letterbox behind video, theme-independent. */
+  --video-surface: var(--neutral-950);
 }
 
 .dark {
@@ -175,6 +178,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-video-surface: var(--video-surface);
 
   --color-primary-50: var(--primary-50);
   --color-primary-100: var(--primary-100);

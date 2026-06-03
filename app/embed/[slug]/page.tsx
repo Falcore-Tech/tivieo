@@ -35,7 +35,7 @@ export default async function EmbedPage({
     : null;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-neutral-950">
+    <main className="flex min-h-dvh items-center justify-center bg-video-surface">
       <VideoPlayer src={videoUrl} title={recording.title} poster={poster} />
     </main>
   );

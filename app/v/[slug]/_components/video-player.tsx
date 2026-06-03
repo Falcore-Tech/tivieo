@@ -31,7 +31,7 @@ export function VideoPlayer({ src, title, poster, captionsSrc }: Props) {
         preload="metadata"
         poster={poster ?? undefined}
         aria-label={title}
-        className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-neutral-950"
+        className="aspect-video w-full overflow-hidden rounded-xl bg-video-surface ring-1 ring-border"
       >
         <source src={src} type="video/webm" />
         {captionsSrc ? (
@@ -46,23 +46,30 @@ export function VideoPlayer({ src, title, poster, captionsSrc }: Props) {
         Your browser doesn&apos;t support embedded video.
       </video>
 
-      <div className="flex items-center justify-end gap-1">
-        <span className="mr-1 text-xs text-muted-foreground">Speed</span>
-        {SPEEDS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => changeSpeed(value)}
-            className={cn(
-              "rounded px-2 py-0.5 text-xs tabular-nums transition-colors",
-              speed === value
-                ? "bg-secondary font-medium text-secondary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {value}×
-          </button>
-        ))}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Speed</span>
+        <div
+          role="group"
+          aria-label="Playback speed"
+          className="inline-flex items-center gap-0.5 rounded-lg bg-secondary p-0.5"
+        >
+          {SPEEDS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={speed === value}
+              onClick={() => changeSpeed(value)}
+              className={cn(
+                "rounded-md px-2 py-0.5 text-xs tabular-nums transition-colors",
+                speed === value
+                  ? "bg-background font-medium text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {value}×
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

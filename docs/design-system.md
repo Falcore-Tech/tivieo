@@ -31,6 +31,9 @@ input, ring, sidebar*, chart-*`. Components should prefer semantic tokens
 (`bg-background`, `text-muted-foreground`, `bg-primary text-primary-foreground`) and reach for raw
 scale steps only when a semantic token doesn't fit.
 
+## Special surfaces
+- `--video-surface` (→ `bg-video-surface`) — near-black letterbox behind the `<video>` element, theme-independent (maps to `neutral-950`). Used by the watch player and the embed page so the dark surface stays consistent in light and dark mode.
+
 ## Radius
 `--radius: 0.5rem` (Tokyo Night roundness), with `--radius-sm … --radius-4xl` derived from it.
 Use `rounded-md/lg/xl/2xl`.
