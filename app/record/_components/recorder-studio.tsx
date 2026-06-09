@@ -19,6 +19,7 @@ export function RecorderStudio() {
   const media = useMediaStreams();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioCleanupRef = useRef<() => void>(() => {});
+  const posterRef = useRef<string | null>(null);
 
   const [corner, setCorner] = useState<BubbleCorner>("bottom-right");
   const [showBubble, setShowBubble] = useState(true);
@@ -77,6 +78,10 @@ export function RecorderStudio() {
     if (mixed.track) compositeStream.addTrack(mixed.track);
 
     await recorder.start(compositeStream);
+    posterRef.current = null;
+    requestAnimationFrame(() => {
+      posterRef.current = compositor.capturePoster();
+    });
     setPhase("recording");
   }, [compositor, media.screenStream, media.webcamStream, recorder]);
 
@@ -97,7 +102,7 @@ export function RecorderStudio() {
   }, [beginRecording]);
 
   const handleStop = useCallback(async () => {
-    const poster = compositor.capturePoster();
+    const poster = posterRef.current ?? compositor.capturePoster();
     const blob = await recorder.stop();
     audioCleanupRef.current();
     audioCleanupRef.current = () => {};
