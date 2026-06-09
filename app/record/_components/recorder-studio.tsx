@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
+import posthog from "posthog-js";
 import { formatDuration } from "@/lib/utils";
 import { useMediaStreams } from "../_hooks/use-media-streams";
 import { useCanvasCompositor } from "../_hooks/use-canvas-compositor";
@@ -78,6 +79,10 @@ export function RecorderStudio() {
     if (mixed.track) compositeStream.addTrack(mixed.track);
 
     await recorder.start(compositeStream);
+    posthog.capture("recording_started", {
+      has_webcam: Boolean(media.webcamStream),
+      has_screen: Boolean(media.screenStream),
+    });
     posterRef.current = null;
     requestAnimationFrame(() => {
       posterRef.current = compositor.capturePoster();
@@ -110,6 +115,10 @@ export function RecorderStudio() {
       setPhase("setup");
       return;
     }
+    posthog.capture("recording_completed", {
+      duration_seconds: Math.round(recorder.elapsedSeconds),
+      size_bytes: blob.size,
+    });
     setResult({
       blob,
       posterDataUrl: poster,

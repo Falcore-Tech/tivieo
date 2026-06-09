@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, Mail, Share2 } from "lucide-react";
+import posthog from "posthog-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export function ShareDialog({ slug, title, open, onOpenChange }: Props) {
   async function copy(value: string, label: string) {
     try {
       await navigator.clipboard.writeText(value);
+      posthog.capture("recording_shared", { slug, method: label });
       setCopied(label);
       toast.success("Copied");
       setTimeout(() => setCopied(null), 1800);
@@ -47,6 +49,7 @@ export function ShareDialog({ slug, title, open, onOpenChange }: Props) {
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
+        posthog.capture("recording_shared", { slug, method: "native" });
       } catch {
         // user dismissed the share sheet
       }

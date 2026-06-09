@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, ExternalLink, Loader2, RotateCcw } from "lucide-react";
+import posthog from "posthog-js";
 import {
   Dialog,
   DialogContent,
@@ -78,9 +79,16 @@ export function SaveDialog({ open, result, onRecordAgain }: Props) {
         setStage("form");
         return;
       }
+      posthog.capture("recording_saved", {
+        slug: response.slug,
+        duration_seconds: Math.round(result.durationSeconds),
+        size_bytes: upload.sizeBytes,
+        has_title: Boolean(title.trim()),
+      });
       setSlug(response.slug);
       setStage("done");
     } catch (error) {
+      posthog.captureException(error);
       toast.error(
         error instanceof Error ? error.message : "Upload failed. Try again.",
       );
@@ -90,6 +98,7 @@ export function SaveDialog({ open, result, onRecordAgain }: Props) {
 
   async function handleCopy() {
     await navigator.clipboard.writeText(shareUrl);
+    posthog.capture("recording_link_copied", { slug });
     setCopied(true);
     toast.success("Link copied");
     setTimeout(() => setCopied(false), 2000);

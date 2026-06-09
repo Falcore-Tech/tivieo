@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { toast } from "sonner";
 import type { RecordingVisibility } from "@/lib/types";
 import { copyWatchLink } from "./share-link";
@@ -31,7 +32,10 @@ export function useRecordingActions(id: string, slug: string) {
     startTransition(async () => {
       const result = await setRecordingVisibility(id, visibility);
       if (result.error) toast.error(result.error);
-      else toast.success(`Visibility set to ${visibility}`);
+      else {
+        posthog.capture("recording_visibility_changed", { slug, visibility });
+        toast.success(`Visibility set to ${visibility}`);
+      }
     });
   }
 
@@ -39,7 +43,10 @@ export function useRecordingActions(id: string, slug: string) {
     startTransition(async () => {
       const result = await softDeleteRecordings([id]);
       if (result.error) toast.error(result.error);
-      else toast.success("Moved to trash");
+      else {
+        posthog.capture("recording_deleted", { slug });
+        toast.success("Moved to trash");
+      }
     });
   }
 
@@ -65,6 +72,7 @@ export function useRecordingActions(id: string, slug: string) {
       toast.error(result.error ?? "Could not start the download.");
       return;
     }
+    posthog.capture("recording_downloaded", { slug });
     const anchor = document.createElement("a");
     anchor.href = result.url;
     anchor.rel = "noopener";

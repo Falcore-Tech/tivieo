@@ -4,6 +4,7 @@ import { customAlphabet } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
+import { getPostHogClient } from "@/lib/posthog-server";
 import {
   presignPutUrl,
   putThumbnail,
@@ -74,6 +75,17 @@ export async function createRecording(input: CreateRecordingInput) {
     });
 
     if (!error) {
+      const posthog = getPostHogClient();
+      posthog.capture({
+        distinctId: user.id,
+        event: "recording_created",
+        properties: {
+          slug,
+          duration_seconds: input.durationSeconds,
+          size_bytes: input.sizeBytes,
+          has_thumbnail: Boolean(thumbnailPath),
+        },
+      });
       revalidatePath("/");
       return { slug };
     }

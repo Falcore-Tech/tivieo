@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,15 +28,18 @@ export function AuthForm() {
     const supabase = createClient();
 
     if (mode === "sign-in") {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       setPending(false);
       if (error) {
         toast.error(error.message);
+        posthog.captureException(error);
         return;
       }
+      posthog.identify(signInData.user.id, { email });
+      posthog.capture("user_signed_in", { method: "email" });
       router.push(next);
       router.refresh();
       return;
@@ -51,7 +55,12 @@ export function AuthForm() {
     setPending(false);
     if (error) {
       toast.error(error.message);
+      posthog.captureException(error);
       return;
+    }
+    if (data.user) {
+      posthog.identify(data.user.id, { email });
+      posthog.capture("user_signed_up", { method: "email" });
     }
     if (data.session) {
       router.push(next);
