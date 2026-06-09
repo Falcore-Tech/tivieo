@@ -140,6 +140,29 @@ export default async function WatchPage({
   );
   const showChapters = isOwner || (recording.chapters?.length ?? 0) > 0;
 
+  const titleBlock = (
+    <div className="flex flex-col gap-1.5">
+      <EditableTitle
+        slug={recording.slug}
+        value={recording.title}
+        canEdit={isOwner}
+      />
+      <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+        <span title={absoluteDate(recording.created_at)}>
+          {formatRelativeDate(recording.created_at)}
+        </span>
+        {recording.duration_seconds ? (
+          <span>· {formatDuration(recording.duration_seconds)}</span>
+        ) : null}
+        {isOwner ? (
+          <span className="inline-flex items-center gap-1">
+            · <Eye className="size-3.5" /> {recording.view_count} views
+          </span>
+        ) : null}
+      </p>
+    </div>
+  );
+
   return (
     <>
       <SiteHeader
@@ -193,27 +216,6 @@ export default async function WatchPage({
             </div>
 
             <aside className="mt-5 flex flex-col gap-4 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
-              <div className="flex flex-col gap-1.5">
-                <EditableTitle
-                  slug={recording.slug}
-                  value={recording.title}
-                  canEdit={isOwner}
-                />
-                <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
-                  <span title={absoluteDate(recording.created_at)}>
-                    {formatRelativeDate(recording.created_at)}
-                  </span>
-                  {recording.duration_seconds ? (
-                    <span>· {formatDuration(recording.duration_seconds)}</span>
-                  ) : null}
-                  {isOwner ? (
-                    <span className="inline-flex items-center gap-1">
-                      · <Eye className="size-3.5" /> {recording.view_count} views
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-
               {hasTranscriptTab ? (
                 <Tabs defaultValue="summary" className="gap-3">
                   <TabsList className="grid w-full grid-cols-2">
@@ -231,6 +233,7 @@ export default async function WatchPage({
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="summary" className="flex flex-col gap-6">
+                    {titleBlock}
                     <RecordingSummary
                       slug={recording.slug}
                       summary={recording.transcript_summary}
@@ -257,6 +260,7 @@ export default async function WatchPage({
                 </Tabs>
               ) : (
                 <div className="flex flex-col gap-6">
+                  {titleBlock}
                   <RecordingSummary
                     slug={recording.slug}
                     summary={recording.transcript_summary}
