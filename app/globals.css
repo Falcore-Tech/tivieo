@@ -6,82 +6,82 @@
 
 /* ------------------------------------------------------------------ *
  * Tivieo design tokens
- * Source-of-truth color scales (oklch) → mapped to semantic tokens.
+ * Source-of-truth color scales (hsl) → mapped to semantic tokens.
  * Never hardcode colors in components; consume these tokens.
  * ------------------------------------------------------------------ */
 :root {
-  --primary-50: oklch(0.962 0.017 259.4);
-  --primary-100: oklch(0.912 0.038 260.7);
-  --primary-200: oklch(0.844 0.069 261.3);
-  --primary-300: oklch(0.776 0.104 262.4);
-  --primary-400: oklch(0.719 0.132 264.2);
-  --primary-500: oklch(0.643 0.168 263.2);
-  --primary-600: oklch(0.600 0.180 257.5);
-  --primary-700: oklch(0.479 0.121 266.0);
-  --primary-800: oklch(0.415 0.066 263.9);
-  --primary-900: oklch(0.354 0.066 266.9);
-  --primary-950: oklch(0.279 0.052 268.9);
+  --primary-50: hsl(216.7 92.8% 96.1%);
+  --primary-100: hsl(217.5 87% 90.9%);
+  --primary-200: hsl(218 87% 84.1%);
+  --primary-300: hsl(219 89.6% 77.5%);
+  --primary-400: hsl(220.8 88.5% 72.3%);
+  --primary-500: hsl(220.6 85.8% 64.1%);
+  --primary-600: hsl(214.6 80.8% 54.7%);
+  --primary-700: hsl(223.2 45.2% 43.5%);
+  --primary-800: hsl(220.3 32.4% 33.1%);
+  --primary-900: hsl(223.2 36.5% 27.1%);
+  --primary-950: hsl(225 37.6% 18.9%);
 
-  --neutral-50: oklch(0.935 0 0);
-  --neutral-100: oklch(0.913 0 0);
-  --neutral-200: oklch(0.835 0 0);
-  --neutral-300: oklch(0.767 0 0);
-  --neutral-400: oklch(0.593 0 0);
-  --neutral-500: oklch(0.496 0 0);
-  --neutral-600: oklch(0.409 0 0);
-  --neutral-700: oklch(0.387 0 0);
-  --neutral-800: oklch(0.306 0 0);
-  --neutral-900: oklch(0.226 0 0);
-  --neutral-950: oklch(0.204 0 0);
+  --neutral-50: hsl(120 0% 91.5%);
+  --neutral-100: hsl(150 0% 88.7%);
+  --neutral-200: hsl(150 0% 78.7%);
+  --neutral-300: hsl(0 0% 70.2%);
+  --neutral-400: hsl(20 0% 49.4%);
+  --neutral-500: hsl(0 0% 38.4%);
+  --neutral-600: hsl(120 0% 29%);
+  --neutral-700: hsl(120 0% 26.7%);
+  --neutral-800: hsl(0 0% 18.5%);
+  --neutral-900: hsl(180 0% 10.9%);
+  --neutral-950: hsl(0 0% 9%);
 
-  --success-50: oklch(0.968 0.025 126.5);
-  --success-100: oklch(0.926 0.056 126.2);
-  --success-200: oklch(0.878 0.094 127.2);
-  --success-300: oklch(0.836 0.125 128.4);
-  --success-400: oklch(0.795 0.139 130.1);
-  --success-500: oklch(0.722 0.148 131.9);
-  --success-600: oklch(0.630 0.136 132.7);
-  --success-700: oklch(0.525 0.093 130.3);
-  --success-800: oklch(0.436 0.069 129.7);
-  --success-900: oklch(0.385 0.056 131.4);
-  --success-950: oklch(0.287 0.041 131.8);
+  --success-50: hsl(86.6 55.7% 93.7%);
+  --success-100: hsl(85.4 54.1% 85.5%);
+  --success-200: hsl(85.9 54.6% 75.8%);
+  --success-300: hsl(86.7 54.3% 67.4%);
+  --success-400: hsl(88.8 50.3% 61.2%);
+  --success-500: hsl(90.9 42.5% 51.6%);
+  --success-600: hsl(92 43.7% 42%);
+  --success-700: hsl(89 34.5% 34.1%);
+  --success-800: hsl(88.6 31% 26.6%);
+  --success-900: hsl(91.9 27.8% 22.7%);
+  --success-950: hsl(92.7 30.2% 14.1%);
 
-  --warning-50: oklch(0.966 0.023 84.6);
-  --warning-100: oklch(0.922 0.052 83.4);
-  --warning-200: oklch(0.872 0.082 83.5);
-  --warning-300: oklch(0.828 0.095 79.4);
-  --warning-400: oklch(0.784 0.106 75.4);
-  --warning-500: oklch(0.717 0.119 68.6);
-  --warning-600: oklch(0.632 0.110 63.4);
-  --warning-700: oklch(0.553 0.075 75.2);
-  --warning-800: oklch(0.467 0.061 75.4);
-  --warning-900: oklch(0.408 0.050 74.9);
-  --warning-950: oklch(0.299 0.036 76.1);
+  --warning-50: hsl(40 75.3% 93.7%);
+  --warning-100: hsl(39.3 75.8% 85.6%);
+  --warning-200: hsl(39.5 73.3% 76.4%);
+  --warning-300: hsl(37.4 69.4% 70.2%);
+  --warning-400: hsl(35.5 66.1% 64.3%);
+  --warning-500: hsl(32.6 61.7% 56%);
+  --warning-600: hsl(30 51% 47.8%);
+  --warning-700: hsl(35.4 38.7% 39.6%);
+  --warning-800: hsl(35.4 38% 31.2%);
+  --warning-900: hsl(35 36.2% 25.9%);
+  --warning-950: hsl(35.6 39.3% 15.8%);
 
-  --error-50: oklch(0.953 0.021 6.6);
-  --error-100: oklch(0.890 0.053 6.5);
-  --error-200: oklch(0.818 0.094 8.5);
-  --error-300: oklch(0.764 0.129 10.3);
-  --error-400: oklch(0.723 0.159 10.3);
-  --error-500: oklch(0.656 0.198 12.9);
-  --error-600: oklch(0.634 0.233 11.6);
-  --error-700: oklch(0.612 0.180 24.1);
-  --error-800: oklch(0.523 0.156 22.9);
-  --error-900: oklch(0.448 0.130 22.3);
-  --error-950: oklch(0.321 0.083 20.9);
+  --error-50: hsl(350.5 82.5% 95.5%);
+  --error-100: hsl(349.6 85.2% 89.4%);
+  --error-200: hsl(350.1 86.9% 82.2%);
+  --error-300: hsl(350.4 88.3% 76.5%);
+  --error-400: hsl(348.9 89.2% 71.6%);
+  --error-500: hsl(348.1 84.6% 62.4%);
+  --error-600: hsl(342.6 91.3% 56.3%);
+  --error-700: hsl(360 66.5% 57.6%);
+  --error-800: hsl(358.4 51% 46.2%);
+  --error-900: hsl(358.1 50.7% 37.2%);
+  --error-950: hsl(357.8 48.1% 22.7%);
 
   /* --- semantic mappings (light · Tokyo Night Day) --- */
-  --background: var(--neutral-100);
-  --foreground: var(--neutral-900);
+  --background: var(--neutral-50);
+  --foreground: var(--neutral-950);
   --card: var(--neutral-50);
   --card-foreground: var(--neutral-900);
   --popover: var(--neutral-50);
   --popover-foreground: var(--neutral-900);
   --primary: var(--primary-600);
   --primary-foreground: var(--neutral-50);
-  --secondary: oklch(0.873 0 0);
+  --secondary: hsl(0 0% 83.5%);
   --secondary-foreground: var(--neutral-900);
-  --muted: oklch(0.873 0 0);
+  --muted: hsl(0 0% 83.5%);
   --muted-foreground: var(--neutral-600);
   --accent: var(--primary-100);
   --accent-foreground: var(--primary-700);
@@ -92,8 +92,8 @@
   --chart-1: var(--primary-500);
   --chart-2: var(--success-500);
   --chart-3: var(--warning-500);
-  --chart-4: oklch(0.751 0.134 299.5);
-  --chart-5: oklch(0.820 0.105 235.7);
+  --chart-4: hsl(261.3 84.7% 78.5%);
+  --chart-5: hsl(202.1 99.9% 74.5%);
   --radius: 0.5rem;
   --sidebar: var(--neutral-50);
   --sidebar-foreground: var(--neutral-900);
@@ -109,20 +109,20 @@
 }
 
 .dark {
-  --background: oklch(0.16 0 0);
-  --foreground: oklch(0.846 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.846 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.846 0 0);
+  --background: hsl(0 0% 5.2%);
+  --foreground: hsl(160 0% 80.1%);
+  --card: hsl(0 0% 9.1%);
+  --card-foreground: hsl(160 0% 80.1%);
+  --popover: hsl(0 0% 9.1%);
+  --popover-foreground: hsl(160 0% 80.1%);
   --primary: var(--primary-400);
   --primary-foreground: var(--neutral-900);
   --secondary: var(--neutral-800);
-  --secondary-foreground: oklch(0.846 0 0);
+  --secondary-foreground: hsl(160 0% 80.1%);
   --muted: var(--neutral-800);
   --muted-foreground: var(--neutral-400);
   --accent: var(--neutral-800);
-  --accent-foreground: oklch(0.846 0 0);
+  --accent-foreground: hsl(160 0% 80.1%);
   --destructive: var(--error-400);
   --border: var(--neutral-800);
   --input: var(--neutral-800);
@@ -130,14 +130,14 @@
   --chart-1: var(--primary-400);
   --chart-2: var(--success-400);
   --chart-3: var(--warning-400);
-  --chart-4: oklch(0.751 0.134 299.5);
-  --chart-5: oklch(0.820 0.105 235.7);
-  --sidebar: oklch(0.135 0 0);
-  --sidebar-foreground: oklch(0.846 0 0);
+  --chart-4: hsl(261.3 84.7% 78.5%);
+  --chart-5: hsl(202.1 99.9% 74.5%);
+  --sidebar: hsl(0 0% 3.2%);
+  --sidebar-foreground: hsl(160 0% 80.1%);
   --sidebar-primary: var(--primary-400);
   --sidebar-primary-foreground: var(--neutral-900);
   --sidebar-accent: var(--neutral-800);
-  --sidebar-accent-foreground: oklch(0.846 0 0);
+  --sidebar-accent-foreground: hsl(160 0% 80.1%);
   --sidebar-border: var(--neutral-800);
   --sidebar-ring: var(--primary-400);
 }
