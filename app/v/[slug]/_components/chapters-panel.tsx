@@ -188,15 +188,12 @@ export function ChaptersPanel({
                 onClick={() => seekTo(chapter.start)}
                 aria-current={isActive}
                 className={cn(
-                  "flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
-                  isActive ? "bg-secondary" : "hover:bg-secondary/60",
+                  "flex w-full gap-3 rounded-lg px-3 text-left transition-colors",
+                  isActive ? "bg-secondary py-3" : "py-2.5 hover:bg-secondary/60",
                 )}
               >
                 <span
-                  className={cn(
-                    "shrink-0 pt-0.5 text-xs tabular-nums",
-                    isActive ? "text-foreground" : "text-muted-foreground",
-                  )}
+                  className="shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground"
                 >
                   {formatDuration(chapter.start)}
                 </span>

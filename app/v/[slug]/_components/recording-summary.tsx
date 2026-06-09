@@ -13,7 +13,7 @@ type Props = {
   canEdit: boolean;
 };
 
-const LONG_SUMMARY = 240;
+const LONG_SUMMARY = 140;
 
 export function RecordingSummary({ slug, summary, canEdit }: Props) {
   const router = useRouter();
@@ -128,7 +128,7 @@ export function RecordingSummary({ slug, summary, canEdit }: Props) {
           onClick={canEdit ? open : undefined}
           className={cn(
             "text-sm leading-relaxed text-muted-foreground",
-            !expanded && isLong && "line-clamp-4",
+            !expanded && isLong && "line-clamp-2",
             canEdit &&
               "cursor-text rounded-md transition-colors hover:text-foreground",
           )}

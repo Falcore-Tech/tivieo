@@ -22,7 +22,6 @@ import { EditableTitle } from "./_components/editable-title";
 import { RecordingSummary } from "./_components/recording-summary";
 import { TranscriptPanel } from "./_components/transcript-panel";
 import { ChaptersPanel } from "./_components/chapters-panel";
-import { ShareBar } from "./_components/share-bar";
 import { WatchActions } from "./_components/watch-actions";
 import { ViewBeacon } from "./_components/view-beacon";
 import { RemuxNotice } from "./_components/remux-notice";
@@ -214,12 +213,6 @@ export default async function WatchPage({
                   ) : null}
                 </p>
               </div>
-
-              <ShareBar
-                slug={recording.slug}
-                visibility={recording.visibility}
-                isOwner={isOwner}
-              />
 
               {hasTranscriptTab ? (
                 <Tabs defaultValue="summary" className="gap-3">
