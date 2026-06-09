@@ -22,7 +22,7 @@
   --primary-900: hsl(223.2 36.5% 27.1%);
   --primary-950: hsl(225 37.6% 18.9%);
 
-  --neutral-50: hsl(120 0% 91.5%);
+  --neutral-50: hsl(120 0% 95.5%);
   --neutral-100: hsl(150 0% 88.7%);
   --neutral-200: hsl(150 0% 78.7%);
   --neutral-300: hsl(0 0% 70.2%);
@@ -79,9 +79,9 @@
   --popover-foreground: var(--neutral-900);
   --primary: var(--primary-600);
   --primary-foreground: var(--neutral-50);
-  --secondary: hsl(0 0% 83.5%);
+  --secondary: var(--neutral-100);
   --secondary-foreground: var(--neutral-900);
-  --muted: hsl(0 0% 83.5%);
+  --muted: var(--neutral-100);
   --muted-foreground: var(--neutral-600);
   --accent: var(--primary-100);
   --accent-foreground: var(--primary-700);
@@ -241,7 +241,7 @@
   --color-error-950: var(--error-950);
 
   /* Layout — max content width (shared by header + page shells) */
-  --container-page: 1760px;
+  --container-page: 1920px;
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
