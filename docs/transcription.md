@@ -14,13 +14,17 @@ topic chips, and an interactive searchable transcript.
 3. The function checks the secret, returns `202` immediately, then transcribes in the background
    (`EdgeRuntime.waitUntil`) so a long Deepgram call never trips the trigger's HTTP timeout. It
    presigns a 30-min R2 GET URL for the private webm (via `aws4fetch`) and sends it to Deepgram `/v1/listen`
-   (`model=nova-3`, `utterances`, `detect_language`, `summarize=v2`, `topics=true`).
-   - **English-only intelligence:** `summarize`/`topics` only work on English audio. If the call
-     fails (e.g. non-English), the function retries **transcript-only** so transcription never
-     breaks — summary/topics are simply left null.
-   - **Speaker naming:** Deepgram phrases its summary with generic labels (`Speaker 0`,
-     `Speaker 1`, …). `personalizeSummary()` rewrites any `Speaker N` label to the owner's name
-     (`SPEAKER_NAME = "Faez"` in `index.ts`) before storing, since these are single-speaker recordings.
+   (`model=nova-3`, `utterances`, `detect_language`, `keyterm=Faez`, `topics=true`).
+   - **Name boosting:** `keyterm=Faez` (nova-3 keyterm prompting) boosts recognition of the owner's
+     name so it's transcribed correctly at the source — no post-processing replacement.
+   - **English-only topics:** `topics` only works on English audio. If the call fails (e.g.
+     non-English), the function retries **transcript-only** so transcription never breaks — topics
+     are simply left null.
+   - **Summary (OpenAI):** Deepgram's extractive `summarize` is dropped. The first-person video
+     description is generated from the transcript text by OpenAI (`gpt-5.4-mini`) in
+     `summarizeTranscript()`, narrated as the owner ("In this video, I walk through…"). If
+     `OPENAI_API_KEY` is unset, the transcript is empty, or the call fails, the summary is left null
+     — a summarizer outage never breaks transcription.
 4. It writes `transcript_text`, `transcript_segments` (`{start,end,text,speaker?,words?}` —
    each utterance keeps its Deepgram `words[]` of `{word,start,end,punctuated_word?,speaker?}`
    for word-accurate caption timing), `transcript_summary`, `transcript_topics`, and flips
@@ -62,6 +66,7 @@ This is wired up live on project `ewmitykmynlvlstnabjy`. To reproduce on a fresh
 3. **Secrets** — set the edge function secrets and the matching Vault secret (same value):
    ```
    supabase secrets set DEEPGRAM_API_KEY=<key>
+   supabase secrets set OPENAI_API_KEY=<key>
    supabase secrets set TRANSCRIBE_WEBHOOK_SECRET=<random>
    -- in SQL: select vault.create_secret('<same random>', 'transcribe_webhook_secret');
    # R2 — so the function can presign the private webm for Deepgram (see docs/r2-storage.md):
@@ -71,6 +76,7 @@ This is wired up live on project `ewmitykmynlvlstnabjy`. To reproduce on a fresh
    The webhook trigger is created by migration `0004` — no dashboard step needed.
 
 ## Notes
-- Cost ≈ a few cents per recording (Deepgram nova-3 + audio intelligence, ~$0.004–0.01/min).
+- Cost ≈ a few cents per recording (Deepgram nova-3 + topics ~$0.004–0.01/min, plus a fraction of a
+  cent for the OpenAI `gpt-5.4-mini` summary, ~$0.003/video).
 - `transcript_text` is GIN/FTS-indexed (`0003`) for future transcript search in the library.
 - The function URL in `0004` hardcodes the project ref — adjust it per environment.

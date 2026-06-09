@@ -8,6 +8,7 @@
 //
 // Required function secrets:
 //   DEEPGRAM_API_KEY           - Deepgram API key
+//   OPENAI_API_KEY             - OpenAI API key (first-person summary)
 //   TRANSCRIBE_WEBHOOK_SECRET  - shared secret echoed by the webhook header
 //   R2_ACCOUNT_ID              - Cloudflare R2 account id
 //   R2_ACCESS_KEY_ID           - R2 S3 API access key id
@@ -23,18 +24,12 @@ declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 const MAX_TOPICS = 6;
 
-// Deepgram's summary refers to people with generic labels ("Speaker 0",
-// "Speaker 1", …). These are single-speaker recordings, so rewrite any such
-// label to the recording owner's name.
+// The recording owner. Boosted as a Deepgram keyterm so his name is
+// transcribed correctly at the source, and named to the summarizer.
 const SPEAKER_NAME = "Faez";
 
-function personalizeSummary(summary: string | null): string | null {
-  if (!summary) return summary;
-  return summary.replace(/\bSpeaker\s*\d+\b/gi, SPEAKER_NAME);
-}
-
-// Summarization + topic detection are English-only; on non-English audio the
-// whole request fails, so we fall back to a transcript-only request.
+// Topic detection is English-only; on non-English audio the whole request
+// fails, so we fall back to a transcript-only request.
 function deepgramEndpoint(withIntelligence: boolean) {
   const params = new URLSearchParams({
     model: "nova-3",
@@ -43,8 +38,9 @@ function deepgramEndpoint(withIntelligence: boolean) {
     utterances: "true",
     detect_language: "true",
   });
+  // Boost recognition of the owner's name (nova-3 only).
+  params.append("keyterm", SPEAKER_NAME);
   if (withIntelligence) {
-    params.set("summarize", "v2");
     params.set("topics", "true");
   }
   return `https://api.deepgram.com/v1/listen?${params.toString()}`;
@@ -84,7 +80,6 @@ type DeepgramResponse = {
       detected_language?: string;
       alternatives?: Array<{ transcript?: string }>;
     }>;
-    summary?: { result?: string; short?: string };
     topics?: {
       segments?: Array<{ topics?: DeepgramTopic[] }>;
     };
@@ -164,6 +159,60 @@ function topTopics(result: DeepgramResponse): string[] {
     .map(([topic]) => topic);
 }
 
+// First-person video description, written as the owner. Deepgram's extractive
+// summarizer can't produce this voice, so we generate it from the transcript
+// with OpenAI. Returns null if there's no transcript or the call fails, so a
+// summarizer outage never breaks transcription.
+const SUMMARY_SYSTEM_PROMPT = [
+  `You write the description for a screen recording narrated by ${SPEAKER_NAME}.`,
+  "Write in the FIRST PERSON as the narrator (\"I walk through…\", \"I demonstrate…\").",
+  "Produce 1–3 short paragraphs of plain prose — no headings, lists, or markdown.",
+  "Open by stating what the video covers, then the specific features/topics shown,",
+  "then the purpose or takeaway. Be concrete and grounded strictly in the transcript;",
+  "do not invent details. Match this style:",
+  "",
+  "In this video, I walk through several custom software and automation projects that I have built, including a fully customized CRM and business operating system, WhatsApp chatbot automations, order management workflows, and lead management systems.",
+  "",
+  "The video covers features such as client and project management, task tracking, team collaboration, communication channels, sales pipelines, dashboards, contact management, and omnichannel customer interactions.",
+  "",
+  "The purpose of the video is to provide an overview of my experience designing and developing integrated business systems, as well as to discuss the expected scope and budget range for a similar implementation.",
+].join("\n");
+
+async function summarizeTranscript(transcript: string): Promise<string | null> {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey || !transcript.trim()) return null;
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-5.4-mini",
+        temperature: 0.4,
+        messages: [
+          { role: "system", content: SUMMARY_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `Write the description for this video.\n\nTranscript:\n${transcript}`,
+          },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      console.error(`OpenAI ${response.status}: ${await response.text()}`);
+      return null;
+    }
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content?.trim();
+    return text || null;
+  } catch (error) {
+    console.error("OpenAI summary failed:", error);
+    return null;
+  }
+}
+
 async function transcribeRecording(
   id: string,
   storagePath: string,
@@ -194,7 +243,7 @@ async function transcribeRecording(
           }
         : {}),
     }));
-    const summary = personalizeSummary(result.results?.summary?.short ?? null);
+    const summary = await summarizeTranscript(fullText);
     const topics = topTopics(result);
 
     await setStatus(id, {
