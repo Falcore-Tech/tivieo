@@ -209,7 +209,6 @@ export function VideoPlayer({
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("volumechange", onVolume);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoRef, fallbackDuration]);
 
   useEffect(() => {

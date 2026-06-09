@@ -1,3 +1,5 @@
+import { readFile, writeFile } from "node:fs/promises";
+
 const oklchToSrgb = (L: number, C: number, hDeg: number) => {
   const h = (hDeg * Math.PI) / 180;
   const a = C * Math.cos(h);
@@ -65,12 +67,12 @@ const oklchToHslString = (L: number, C: number, h: number) => {
 const path = process.argv[2];
 if (!path) throw new Error("usage: oklch-to-hsl.ts <file>");
 
-const source = await Bun.file(path).text();
+const source = await readFile(path, "utf8");
 const converted = source.replace(
   /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/g,
-  (_match, l, c, h) =>
+  (_match: string, l: string, c: string, h: string) =>
     oklchToHslString(Number(l), Number(c), Number(h)),
 );
 
-await Bun.write(path, converted);
+await writeFile(path, converted);
 console.log("converted oklch → hsl in", path);
