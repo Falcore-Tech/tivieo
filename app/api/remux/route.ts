@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { remuxRecordingVideo } from "./_lib/remux";
 
@@ -8,13 +7,12 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const MAX_ATTEMPTS = 3;
-const SWEEP_LIMIT = 5;
 
 type Job = { id: string; storage_path: string; remux_attempts: number };
 type Admin = ReturnType<typeof createAdminClient>;
 
 // Atomically claim a row by flipping pending/error → processing only if it is
-// still in that state, so concurrent workers never grab the same job.
+// still in that state, so a duplicate webhook delivery never double-processes.
 async function claim(admin: Admin, id: string, attempts: number) {
   const { data } = await admin
     .from("recordings")
@@ -43,59 +41,31 @@ async function runJob(admin: Admin, job: Job) {
   }
 }
 
-function isCron(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  return (
-    Boolean(secret) &&
-    request.headers.get("authorization") === `Bearer ${secret}`
-  );
-}
-
-// Cron sweep (Vercel cron sends GET): process a batch of pending/error jobs.
-export async function GET(request: NextRequest) {
-  if (!isCron(request))
+// Invoked by the Supabase Database Webhook on recordings INSERT (and re-pend).
+// Auth is the shared secret stored in Vault and sent as x-webhook-secret —
+// mirrors the transcribe pipeline.
+export async function POST(request: NextRequest) {
+  const secret = process.env.REMUX_WEBHOOK_SECRET;
+  if (!secret || request.headers.get("x-webhook-secret") !== secret)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const admin = createAdminClient();
-  const { data: jobs } = await admin
-    .from("recordings")
-    .select("id, storage_path, remux_attempts")
-    .in("remux_status", ["pending", "error"])
-    .lt("remux_attempts", MAX_ATTEMPTS)
-    .order("created_at", { ascending: true })
-    .limit(SWEEP_LIMIT)
-    .returns<Job[]>();
-
-  const results: Record<string, string> = {};
-  for (const job of jobs ?? []) results[job.id] = await runJob(admin, job);
-  return NextResponse.json({ processed: jobs?.length ?? 0, results });
-}
-
-// Owner kick right after upload: process one recording the caller owns.
-export async function POST(request: NextRequest) {
-  let body: { recordingId?: string } = {};
+  let payload: { record?: { id?: string }; recordingId?: string } = {};
   try {
-    body = await request.json();
+    payload = await request.json();
   } catch {
     // ignore
   }
-  if (!body.recordingId)
-    return NextResponse.json({ error: "Missing recordingId" }, { status: 400 });
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const recordingId = payload.record?.id ?? payload.recordingId;
+  if (!recordingId)
+    return NextResponse.json({ error: "Missing recording id" }, { status: 400 });
 
   const admin = createAdminClient();
   const { data: job } = await admin
     .from("recordings")
-    .select("id, user_id, storage_path, remux_attempts")
-    .eq("id", body.recordingId)
-    .maybeSingle<Job & { user_id: string }>();
-  if (!job || job.user_id !== user.id)
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    .select("id, storage_path, remux_attempts")
+    .eq("id", recordingId)
+    .maybeSingle<Job>();
+  if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const result = await runJob(admin, job);
   return NextResponse.json({ result });

@@ -79,6 +79,7 @@ searchable transcript panel. Full setup + secrets are in `docs/transcription.md`
 SQL lives in `supabase/migrations/` (`0001_init_recordings.sql` … `0006_remux_status.sql`).
 Apply via the Supabase SQL editor, `supabase db push`, or the Supabase MCP. `0001` is applied; apply
 `0002` before using folders, tags, trash, view counts, vanity-slug redirects, or password/expiry links;
-apply `0003`/`0004` before using transcription; apply `0006` before using the seekability remux job
-(`/api/remux`). It adds `remux_status`/`remux_attempts` and marks all existing rows `ready` (they were
-backfilled by `scripts/remux-add-cues.ts`).
+apply `0003`/`0004` before using transcription; apply `0006`+`0007` before using the seekability remux
+job. `0006` adds `remux_status`/`remux_attempts` and marks existing rows `ready` (backfilled by
+`scripts/remux-add-cues.ts`); `0007` adds the INSERT Database Webhook that POSTs `/api/remux` (needs
+the `remux_webhook_secret` Vault secret + matching `REMUX_WEBHOOK_SECRET` Vercel env var).

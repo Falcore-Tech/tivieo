@@ -78,13 +78,6 @@ export function SaveDialog({ open, result, onRecordAgain }: Props) {
         setStage("form");
         return;
       }
-      // Kick the background remux (adds a Cues seek index) — fire-and-forget;
-      // a Vercel cron sweep is the safety net if this request never lands.
-      void fetch("/api/remux", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recordingId: upload.recordingId }),
-      }).catch(() => {});
       setSlug(response.slug);
       setStage("done");
     } catch (error) {

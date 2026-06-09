@@ -46,8 +46,8 @@ bespoke piece.
    - `createRecording()` server action uploads the small poster JPEG server-side to the public
      `tivieo-thumbnails` bucket (`putThumbnail`), computes the slug, inserts the row (storing the bare
      R2 keys in `storage_path`/`thumbnail_path`), returns `/v/<slug>`. See `docs/r2-storage.md`.
-   - On success the dialog fires a fire-and-forget `POST /api/remux { recordingId }` to start the
-     remux below; the cron sweep is the safety net if that request never lands.
+   - The INSERT fires the **remux Database Webhook** below (no client call) — same mechanism as
+     transcription.
 
 6. **Make seekable (background remux)** — `app/api/remux/` + `recordings.remux_status`
    - MediaRecorder webm has **no Cues seek index**, so browsers can only seek within buffered data
@@ -60,9 +60,12 @@ bespoke piece.
      `putVideo`). `next.config.ts` `outputFileTracingIncludes` bundles the binary into that route.
    - `remux_status` (`pending → processing → ready/error`, + `remux_attempts`) is the job's state
      machine. The worker **atomically claims** a row (`pending/error → processing` guarded by a status
-     filter) so concurrent runs never double-process. `POST` handles the per-recording owner kick
-     (session-authed); `GET` handles the **Vercel cron** sweep (`vercel.json`, every 5 min, authed by
-     the `Authorization: Bearer $CRON_SECRET` header Vercel sends). Up to `MAX_ATTEMPTS` retries.
+     filter) so a duplicate webhook delivery never double-processes. Up to `MAX_ATTEMPTS` retries.
+   - **Trigger:** a **Supabase Database Webhook** on `recordings` INSERT (migration `0007`, mirrors the
+     transcribe trigger `0004`) — a `pg_net` HTTP POST to `/api/remux` carrying the new row, authed by
+     an `x-webhook-secret` header read from Vault (`remux_webhook_secret`). The route checks it against
+     the `REMUX_WEBHOOK_SECRET` env var. Setting `remux_status` back to `pending` re-fires it (manual
+     retry). No client call, no cron.
    - Watch page shows a subtle **"Optimizing for smooth seeking…"** chip (`RemuxNotice`) that polls
      until `ready`; playback works throughout, only full seeking waits.
    - Backfill existing rows once with `bun --env-file=.env.local scripts/remux-add-cues.ts`
