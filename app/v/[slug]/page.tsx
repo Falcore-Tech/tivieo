@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import { CalendarX, Eye } from "lucide-react";
+import Link from "next/link";
+import { CalendarX, Eye, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { presignGetUrl, publicThumbnailUrl } from "@/lib/r2";
@@ -134,7 +136,18 @@ export default async function WatchPage({
       <SiteHeader
         minimal
         title={recording.title}
-        actions={<WatchActions slug={recording.slug} title={recording.title} />}
+        actions={
+          <>
+            {user ? (
+              <Button asChild size="sm" variant="outline" className="h-8">
+                <Link href="/record">
+                  <Plus className="size-4" /> Record
+                </Link>
+              </Button>
+            ) : null}
+            <WatchActions slug={recording.slug} title={recording.title} />
+          </>
+        }
       />
       <main className="mx-auto w-full max-w-page flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <VideoProvider>
