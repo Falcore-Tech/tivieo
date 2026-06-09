@@ -10,13 +10,12 @@ import { updateSummary } from "../_actions";
 type Props = {
   slug: string;
   summary: string | null;
-  topics: string[] | null;
   canEdit: boolean;
 };
 
 const LONG_SUMMARY = 240;
 
-export function RecordingSummary({ slug, summary, topics, canEdit }: Props) {
+export function RecordingSummary({ slug, summary, canEdit }: Props) {
   const router = useRouter();
   const [value, setValue] = useState(summary ?? "");
   const [editing, setEditing] = useState(false);
@@ -30,8 +29,6 @@ export function RecordingSummary({ slug, summary, topics, canEdit }: Props) {
   useEffect(() => {
     if (editing) textareaRef.current?.focus();
   }, [editing]);
-
-  const hasTopics = Boolean(topics && topics.length > 0);
 
   function open() {
     setDraft(value);
@@ -109,19 +106,16 @@ export function RecordingSummary({ slug, summary, topics, canEdit }: Props) {
   }
 
   if (!value) {
-    if (!canEdit) return hasTopics ? <TopicList topics={topics!} /> : null;
+    if (!canEdit) return null;
     return (
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={open}
-          className="inline-flex items-center gap-1.5 self-start rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <Plus className="size-3.5" />
-          Add a description
-        </button>
-        {hasTopics ? <TopicList topics={topics!} /> : null}
-      </div>
+      <button
+        type="button"
+        onClick={open}
+        className="inline-flex items-center gap-1.5 self-start rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Plus className="size-3.5" />
+        Add a description
+      </button>
     );
   }
 
@@ -152,22 +146,6 @@ export function RecordingSummary({ slug, summary, topics, canEdit }: Props) {
           </button>
         ) : null}
       </div>
-      {hasTopics ? <TopicList topics={topics!} /> : null}
     </div>
-  );
-}
-
-function TopicList({ topics }: { topics: string[] }) {
-  return (
-    <ul className="flex flex-wrap gap-1.5">
-      {topics.map((topic) => (
-        <li
-          key={topic}
-          className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground"
-        >
-          {topic}
-        </li>
-      ))}
-    </ul>
   );
 }

@@ -45,6 +45,8 @@ paths. Private videos play via presigned GET URLs; thumbnails via the public `r2
 | `transcript_lang` | text null | Deepgram-detected language code (0003) |
 | `transcript_text` | text null | full transcript; FTS-indexed (0003) |
 | `transcript_segments` | jsonb null | array of `{ start, end, text, speaker? }` (0003) |
+| `chapters` | jsonb null | array of `{ start, title, description? }` (seconds, sorted ascending) (0008) |
+| `chapters_status` | text | `none`\|`pending`\|`processing`\|`ready`\|`error`, default `none` (0008) |
 
 ## Table: `collections` (0002)
 Folders. `id` uuid PK, `user_id` uuid → `auth.users`, `name` text, `created_at` timestamptz.
@@ -75,11 +77,27 @@ on `INSERT` into `public.recordings` invokes the `transcribe` edge function
 caption file from `/v/[slug]/captions` (built from the segments, same-origin) plus an interactive,
 searchable transcript panel. Full setup + secrets are in `docs/transcription.md`.
 
+## Chapters (0008)
+Named, timestamped video segments (Loom/Tella-style), stored in `chapters` with a `chapters_status`
+state machine. They are **auto-generated** from the transcript: when the `transcribe` function
+finishes (and there's speech), it sets `chapters_status = 'pending'`, which crosses the
+`generate_chapters_on_pend` UPDATE trigger (mirrors the transcribe/remux webhook pattern). That POSTs
+to the `generate-chapters` edge function (`supabase/functions/generate-chapters/`), which reads the
+stored `transcript_segments` + `duration_seconds` and asks OpenAI to split it into 3–8 named chapters
+(no Deepgram — DB only). Owners can **Regenerate** (`regenerateChapters` re-pends) or hand-author
+chapters (`saveChapters` writes the array directly, enabling manual-only chapters with no transcript).
+One-time setup: `select vault.create_secret('<random>', 'chapters_webhook_secret');` + set the same
+value as the `generate-chapters` function's `CHAPTERS_WEBHOOK_SECRET` secret. The watch page shows
+chapters in a sidebar **Chapters** tab, as **seek-bar markers**, and as a brief **title overlay**.
+
 ## Migrations
-SQL lives in `supabase/migrations/` (`0001_init_recordings.sql` … `0006_remux_status.sql`).
+SQL lives in `supabase/migrations/` (`0001_init_recordings.sql` … `0008_chapters.sql`).
 Apply via the Supabase SQL editor, `supabase db push`, or the Supabase MCP. `0001` is applied; apply
 `0002` before using folders, tags, trash, view counts, vanity-slug redirects, or password/expiry links;
 apply `0003`/`0004` before using transcription; apply `0006`+`0007` before using the seekability remux
 job. `0006` adds `remux_status`/`remux_attempts` and marks existing rows `ready` (backfilled by
 `scripts/remux-add-cues.ts`); `0007` adds the INSERT Database Webhook that POSTs `/api/remux` (needs
-the `remux_webhook_secret` Vault secret + matching `REMUX_WEBHOOK_SECRET` Vercel env var).
+the `remux_webhook_secret` Vault secret + matching `REMUX_WEBHOOK_SECRET` Vercel env var). Apply
+`0008` before using chapters (adds `chapters`/`chapters_status` + the `generate_chapters_on_pend`
+UPDATE webhook to the `generate-chapters` edge function; needs the `chapters_webhook_secret` Vault
+secret + matching `CHAPTERS_WEBHOOK_SECRET` function secret).

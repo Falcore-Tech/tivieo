@@ -2,3 +2,6 @@ project_id = "tivieo"
 
 [functions.transcribe]
 verify_jwt = false
+
+[functions.generate-chapters]
+verify_jwt = false

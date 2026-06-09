@@ -21,6 +21,7 @@ import { VideoPlayer } from "./_components/video-player";
 import { EditableTitle } from "./_components/editable-title";
 import { RecordingSummary } from "./_components/recording-summary";
 import { TranscriptPanel } from "./_components/transcript-panel";
+import { ChaptersPanel } from "./_components/chapters-panel";
 import { ShareBar } from "./_components/share-bar";
 import { WatchActions } from "./_components/watch-actions";
 import { ViewBeacon } from "./_components/view-beacon";
@@ -132,9 +133,13 @@ export default async function WatchPage({
     ? publicThumbnailUrl(recording.thumbnail_path)
     : null;
 
+  const hasTranscript =
+    recording.transcript_status === "ready" &&
+    (recording.transcript_segments?.length ?? 0) > 0;
   const hasTranscriptTab = !(
     recording.transcript_status === "none" && !isOwner
   );
+  const showChapters = isOwner || (recording.chapters?.length ?? 0) > 0;
 
   return (
     <>
@@ -178,6 +183,7 @@ export default async function WatchPage({
                 title={recording.title}
                 poster={poster}
                 durationSeconds={recording.duration_seconds}
+                chapters={recording.chapters}
                 captionsSrc={
                   recording.transcript_status === "ready"
                     ? `/v/${recording.slug}/captions`
@@ -217,27 +223,35 @@ export default async function WatchPage({
 
               {hasTranscriptTab ? (
                 <Tabs defaultValue="summary" className="gap-3">
-                  <TabsList className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger
                       value="summary"
-                      className="flex-1 data-active:bg-card data-active:shadow-sm dark:data-active:bg-neutral-700"
+                      className="data-active:bg-card data-active:shadow-sm dark:data-active:bg-neutral-700"
                     >
                       Summary
                     </TabsTrigger>
                     <TabsTrigger
                       value="transcript"
-                      className="flex-1 data-active:bg-card data-active:shadow-sm dark:data-active:bg-neutral-700"
+                      className="data-active:bg-card data-active:shadow-sm dark:data-active:bg-neutral-700"
                     >
                       Transcript
                     </TabsTrigger>
                   </TabsList>
-                  <TabsContent value="summary">
+                  <TabsContent value="summary" className="flex flex-col gap-6">
                     <RecordingSummary
                       slug={recording.slug}
                       summary={recording.transcript_summary}
-                      topics={recording.transcript_topics}
                       canEdit={isOwner}
                     />
+                    {showChapters ? (
+                      <ChaptersPanel
+                        status={recording.chapters_status}
+                        chapters={recording.chapters}
+                        isOwner={isOwner}
+                        hasTranscript={hasTranscript}
+                        slug={recording.slug}
+                      />
+                    ) : null}
                   </TabsContent>
                   <TabsContent value="transcript">
                     <TranscriptPanel
@@ -249,12 +263,22 @@ export default async function WatchPage({
                   </TabsContent>
                 </Tabs>
               ) : (
-                <RecordingSummary
-                  slug={recording.slug}
-                  summary={recording.transcript_summary}
-                  topics={recording.transcript_topics}
-                  canEdit={isOwner}
-                />
+                <div className="flex flex-col gap-6">
+                  <RecordingSummary
+                    slug={recording.slug}
+                    summary={recording.transcript_summary}
+                    canEdit={isOwner}
+                  />
+                  {showChapters ? (
+                    <ChaptersPanel
+                      status={recording.chapters_status}
+                      chapters={recording.chapters}
+                      isOwner={isOwner}
+                      hasTranscript={hasTranscript}
+                      slug={recording.slug}
+                    />
+                  ) : null}
+                </div>
               )}
             </aside>
           </div>

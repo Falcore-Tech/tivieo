@@ -44,10 +44,12 @@ shadcn (radix): `button`, `input`, `label`, `select`, `card`, `badge`, `dialog`,
 ### `app/v/[slug]/_components/`
 The watch page is a near-full-width two-column layout (`max-w-[1760px]`): big video on the left, a sticky right sidebar holding the title, meta, owner visibility, and a Summary/Transcript tab group. It uses a clean minimal `SiteHeader` (logo + title + `WatchActions`).
 - `video-context.tsx` — `VideoProvider` / `useVideoRef`; shares the `<video>` ref so the transcript can seek the player.
-- `video-player.tsx` — native `<video>` (letterbox via `bg-video-surface`) with a segmented playback-speed control (`aria-pressed`) and a captions `<track>`. Shared with `app/embed/[slug]`.
+- `video-player.tsx` — native `<video>` (letterbox via `bg-video-surface`) with a segmented playback-speed control (`aria-pressed`) and a captions `<track>`. The custom `SeekBar` renders **chapter markers** (ticks at chapter boundaries) with a hover tooltip showing the chapter title; a brief **chapter title overlay** (top-left) appears when the active chapter changes. Shared with `app/embed/[slug]`.
 - `editable-title.tsx` — click-to-edit `<h1>` (owner only); saves via `updateTitle`. Read-only `<h1>` for viewers.
 - `recording-summary.tsx` — the description (AI summary): click-to-edit for the owner (`updateSummary`), with a Show more/less clamp and topic chips. No "AI summary" label (the tab provides context).
 - `transcript-panel.tsx` — searchable transcript (aria-labelled, with a result count); clickable timestamps seek the player, active line highlights on playback; skeleton loading state.
+- `chapters-panel.tsx` — chapters list **stacked under the description in the Summary tab** (Tella-style merge): clickable `timestamp + title` rows that seek the player; the active chapter expands into a highlighted card showing its `description`; owner Generate/Regenerate (`regenerateChapters`) + Edit behind a `…` dropdown on the header; auto-refreshes while generating.
+- `chapter-editor.tsx` — owner-only inline editor: per-row title input + "set start to current playhead" (reads the shared video ref), add/delete rows, saves the whole array via `saveChapters`.
 - `share-bar.tsx` — owner-only visibility `Select` (returns null for viewers).
 - `watch-actions.tsx` — header split-button: "Share" opens the dialog, the attached link icon copies the link.
 - `share-dialog.tsx` — link / embed iframe / QR tabs + social share.

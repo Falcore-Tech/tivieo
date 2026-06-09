@@ -10,7 +10,8 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDuration } from "@/lib/utils";
+import type { Chapter } from "@/lib/types";
 import { useVideoRef } from "./video-context";
 
 const SPEEDS = [0.5, 1, 1.5, 2];
@@ -21,26 +22,46 @@ type Props = {
   poster?: string | null;
   captionsSrc?: string | null;
   durationSeconds?: number | null;
+  chapters?: Chapter[] | null;
 };
+
+function chapterAt(chapters: Chapter[], time: number) {
+  let index = -1;
+  for (let i = 0; i < chapters.length; i += 1) {
+    if (chapters[i].start <= time) index = i;
+    else break;
+  }
+  return index;
+}
 
 function SeekBar({
   currentTime,
   duration,
+  chapters,
   onSeek,
+  onHoverChange,
 }: {
   currentTime: number;
   duration: number;
+  chapters: Chapter[];
   onSeek: (seconds: number) => void;
+  onHoverChange?: (seconds: number | null) => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [dragValue, setDragValue] = useState(0);
+  const [hoverFraction, setHoverFraction] = useState<number | null>(null);
 
   const hasDuration = duration > 0 && Number.isFinite(duration);
   const value = dragging ? dragValue : currentTime;
   const fraction = hasDuration ? Math.min(1, Math.max(0, value / duration)) : 0;
+
+  const hoverChapter =
+    hoverFraction !== null && chapters.length > 0
+      ? chapters[chapterAt(chapters, hoverFraction * duration)]
+      : null;
 
   function timeFromPointer(clientX: number) {
     const track = trackRef.current;
@@ -48,6 +69,13 @@ function SeekBar({
     const rect = track.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     return ratio * duration;
+  }
+
+  function fractionFromPointer(clientX: number) {
+    const track = trackRef.current;
+    if (!track) return 0;
+    const rect = track.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
   }
 
   return (
@@ -67,6 +95,10 @@ function SeekBar({
         setDragValue(timeFromPointer(event.clientX));
       }}
       onPointerMove={(event) => {
+        if (hasDuration) {
+          setHoverFraction(fractionFromPointer(event.clientX));
+          onHoverChange?.(timeFromPointer(event.clientX));
+        }
         if (!draggingRef.current) return;
         setDragValue(timeFromPointer(event.clientX));
       }}
@@ -82,7 +114,11 @@ function SeekBar({
         setDragging(false);
       }}
       onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseLeave={() => {
+        setHovering(false);
+        setHoverFraction(null);
+        onHoverChange?.(null);
+      }}
       onKeyDown={(event) => {
         if (!hasDuration) return;
         if (event.key === "ArrowLeft")
@@ -100,6 +136,16 @@ function SeekBar({
           className="absolute inset-y-0 left-0 rounded-full bg-white"
           style={{ width: `${fraction * 100}%` }}
         />
+        {hasDuration &&
+          chapters.map((chapter, index) =>
+            index === 0 ? null : (
+              <span
+                key={`${chapter.start}-${index}`}
+                className="absolute top-1/2 h-2.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-video-surface/80"
+                style={{ left: `${(chapter.start / duration) * 100}%` }}
+              />
+            ),
+          )}
         <div
           className={cn(
             "absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow transition-opacity",
@@ -108,6 +154,20 @@ function SeekBar({
           style={{ left: `${fraction * 100}%` }}
         />
       </div>
+
+      {hovering && hoverFraction !== null && hoverChapter ? (
+        <div
+          className="pointer-events-none absolute bottom-4 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs text-white shadow-lg ring-1 ring-white/10"
+          style={{
+            left: `${hoverFraction * 100}%`,
+          }}
+        >
+          <span className="tabular-nums text-white/60">
+            {formatDuration(hoverChapter.start)}
+          </span>{" "}
+          {hoverChapter.title}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -126,13 +186,20 @@ export function VideoPlayer({
   poster,
   captionsSrc,
   durationSeconds,
+  chapters,
 }: Props) {
   const videoRef = useVideoRef();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const durationFixedRef = useRef(false);
+  const chapterIndexRef = useRef(-1);
+  const overlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const chapterList = chapters ?? [];
   const fallbackDuration =
     durationSeconds && durationSeconds > 0 ? durationSeconds : 0;
+
+  const [overlayChapter, setOverlayChapter] = useState<string | null>(null);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -232,6 +299,25 @@ export function VideoPlayer({
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
+  // Briefly surface the chapter title when the active chapter changes.
+  useEffect(() => {
+    if (chapterList.length === 0) return;
+    const index = chapterAt(chapterList, currentTime);
+    if (index < 0 || index === chapterIndexRef.current) return;
+    chapterIndexRef.current = index;
+    setOverlayChapter(chapterList[index].title);
+    if (overlayTimerRef.current) clearTimeout(overlayTimerRef.current);
+    overlayTimerRef.current = setTimeout(() => setOverlayChapter(null), 2500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapters, currentTime]);
+
+  useEffect(
+    () => () => {
+      if (overlayTimerRef.current) clearTimeout(overlayTimerRef.current);
+    },
+    [],
+  );
+
   function togglePlay() {
     const video = videoRef.current;
     if (!video) return;
@@ -291,6 +377,12 @@ export function VideoPlayer({
           Your browser doesn&apos;t support embedded video.
         </video>
 
+        {overlayChapter ? (
+          <div className="pointer-events-none absolute left-4 top-4 max-w-[70%] rounded-md bg-black/65 px-3 py-1.5 text-sm font-medium text-white opacity-100 backdrop-blur transition-opacity">
+            {overlayChapter}
+          </div>
+        ) : null}
+
         {captionsOn && activeCue ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-20 flex justify-center px-4">
             <span className="max-w-[85%] rounded-md bg-black/70 px-4 py-2 text-center text-xl font-medium leading-snug text-white sm:text-2xl lg:text-3xl">
@@ -323,7 +415,9 @@ export function VideoPlayer({
           <SeekBar
             currentTime={currentTime}
             duration={duration}
+            chapters={chapterList}
             onSeek={seek}
+            onHoverChange={setHoverTime}
           />
 
           <div className="flex items-center gap-2 text-white">
@@ -341,7 +435,7 @@ export function VideoPlayer({
             </button>
 
             <span className="text-xs tabular-nums text-white/90">
-              {formatClock(currentTime)} / {formatClock(duration)}
+              {formatClock(hoverTime ?? currentTime)} / {formatClock(duration)}
             </span>
 
             <div className="ml-auto flex items-center gap-1">

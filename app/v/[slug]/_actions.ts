@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyPassword } from "@/lib/password";
-import type { Recording, RecordingVisibility } from "@/lib/types";
+import type { Chapter, Recording, RecordingVisibility } from "@/lib/types";
 
 export async function setVisibility(
   slug: string,
@@ -105,6 +105,73 @@ export async function requestTranscription(slug: string) {
 
   revalidatePath(`/v/${slug}`);
   return { ok: true };
+}
+
+export async function regenerateChapters(slug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  // Flip to `pending`; the chapters_status UPDATE-to-pending trigger re-invokes
+  // the generate-chapters edge function. Idempotent: a row already
+  // pending/processing won't re-cross the trigger transition.
+  const { data, error } = await supabase
+    .from("recordings")
+    .update({ chapters_status: "pending" })
+    .eq("slug", slug)
+    .eq("user_id", user.id)
+    .not("chapters_status", "in", "(pending,processing)")
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  if (error) return { error: error.message };
+  if (!data) {
+    return { error: "Already generating, or not your recording." };
+  }
+
+  revalidatePath(`/v/${slug}`);
+  return { ok: true };
+}
+
+function sanitizeChapters(chapters: Chapter[]): Chapter[] {
+  const seen = new Set<number>();
+  const cleaned: Chapter[] = [];
+  for (const chapter of chapters) {
+    const title = String(chapter?.title ?? "").trim();
+    const description = String(chapter?.description ?? "").trim();
+    const start = Math.max(0, Math.floor(Number(chapter?.start)));
+    if (!title || !Number.isFinite(start) || seen.has(start)) continue;
+    seen.add(start);
+    cleaned.push(description ? { start, title, description } : { start, title });
+  }
+  cleaned.sort((a, b) => a.start - b.start);
+  return cleaned;
+}
+
+export async function saveChapters(slug: string, chapters: Chapter[]) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const cleaned = sanitizeChapters(chapters);
+
+  const { error } = await supabase
+    .from("recordings")
+    .update({
+      chapters: cleaned.length > 0 ? cleaned : null,
+      chapters_status: cleaned.length > 0 ? "ready" : "none",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("slug", slug)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/v/${slug}`);
+  return { ok: true, chapters: cleaned };
 }
 
 export async function recordView(slug: string) {

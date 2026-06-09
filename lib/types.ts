@@ -7,6 +7,18 @@ export type TranscriptStatus =
   | "processing"
   | "ready"
   | "error";
+export type ChaptersStatus =
+  | "none"
+  | "pending"
+  | "processing"
+  | "ready"
+  | "error";
+
+export type Chapter = {
+  start: number;
+  title: string;
+  description?: string;
+};
 
 export type TranscriptWord = {
   word: string;
@@ -51,6 +63,8 @@ export type Recording = {
   transcript_segments: TranscriptSegment[] | null;
   transcript_summary: string | null;
   transcript_topics: string[] | null;
+  chapters: Chapter[] | null;
+  chapters_status: ChaptersStatus;
 };
 
 export type Collection = {

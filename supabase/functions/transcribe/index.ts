@@ -249,6 +249,10 @@ async function transcribeRecording(
       transcript_segments: segments,
       transcript_summary: summary,
       transcript_topics: topics.length > 0 ? topics : null,
+      // Hand off to the generate-chapters function (only when there's speech to
+      // chapter). Setting 'pending' crosses the generate_chapters_on_pend
+      // trigger (migration 0008), which POSTs to that function.
+      ...(segments.length > 0 ? { chapters_status: "pending" } : {}),
     });
   } catch (error) {
     console.error(`transcribe ${id} failed:`, error);
