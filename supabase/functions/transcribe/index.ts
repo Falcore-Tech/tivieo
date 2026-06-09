@@ -166,16 +166,11 @@ function topTopics(result: DeepgramResponse): string[] {
 const SUMMARY_SYSTEM_PROMPT = [
   `You write the description for a screen recording narrated by ${SPEAKER_NAME}.`,
   "Write in the FIRST PERSON as the narrator (\"I walk through…\", \"I demonstrate…\").",
-  "Produce 1–3 short paragraphs of plain prose — no headings, lists, or markdown.",
-  "Open by stating what the video covers, then the specific features/topics shown,",
-  "then the purpose or takeaway. Be concrete and grounded strictly in the transcript;",
-  "do not invent details. Match this style:",
+  "Produce ONE concise paragraph of plain prose — MAXIMUM 50 words, no headings, lists, or markdown.",
+  "State what the video covers and its purpose. Be concrete and grounded strictly in",
+  "the transcript; do not invent details. Match this voice:",
   "",
-  "In this video, I walk through several custom software and automation projects that I have built, including a fully customized CRM and business operating system, WhatsApp chatbot automations, order management workflows, and lead management systems.",
-  "",
-  "The video covers features such as client and project management, task tracking, team collaboration, communication channels, sales pipelines, dashboards, contact management, and omnichannel customer interactions.",
-  "",
-  "The purpose of the video is to provide an overview of my experience designing and developing integrated business systems, as well as to discuss the expected scope and budget range for a similar implementation.",
+  "In this video, I walk through several custom software and automation projects I have built, including a customized CRM, WhatsApp chatbot automations, and order and lead management workflows, to give an overview of my experience and discuss the expected scope and budget for a similar implementation.",
 ].join("\n");
 
 async function summarizeTranscript(transcript: string): Promise<string | null> {
@@ -191,6 +186,7 @@ async function summarizeTranscript(transcript: string): Promise<string | null> {
       body: JSON.stringify({
         model: "gpt-5.4-mini",
         temperature: 0.4,
+        max_completion_tokens: 120,
         messages: [
           { role: "system", content: SUMMARY_SYSTEM_PROMPT },
           {

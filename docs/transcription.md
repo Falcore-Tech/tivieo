@@ -22,7 +22,8 @@ topic chips, and an interactive searchable transcript.
      are simply left null.
    - **Summary (OpenAI):** Deepgram's extractive `summarize` is dropped. The first-person video
      description is generated from the transcript text by OpenAI (`gpt-5.4-mini`) in
-     `summarizeTranscript()`, narrated as the owner ("In this video, I walk through…"). If
+     `summarizeTranscript()`, narrated as the owner ("In this video, I walk through…"), capped at
+     **one paragraph / ≤50 words** (`SUMMARY_SYSTEM_PROMPT` + `max_completion_tokens: 120`). If
      `OPENAI_API_KEY` is unset, the transcript is empty, or the call fails, the summary is left null
      — a summarizer outage never breaks transcription.
 4. It writes `transcript_text`, `transcript_segments` (`{start,end,text,speaker?,words?}` —
