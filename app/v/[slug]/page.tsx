@@ -171,13 +171,23 @@ export default async function WatchPage({
         actions={
           <>
             {user ? (
-              <Button asChild size="sm" variant="outline" className="h-8">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-8 max-sm:hidden"
+              >
                 <Link href="/record">
                   <Plus className="size-4" /> Record
                 </Link>
               </Button>
             ) : null}
-            <Button asChild size="sm" variant="outline" className="h-8">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="h-8 max-sm:hidden"
+            >
               <a href={downloadUrl} download={`${recording.slug}.webm`}>
                 <Download className="size-4" /> Download
               </a>
@@ -215,7 +225,15 @@ export default async function WatchPage({
               <RemuxNotice status={recording.remux_status} />
             </div>
 
-            <aside className="mt-5 flex flex-col gap-4 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
+            <aside className="mt-5 flex flex-col gap-6 lg:mt-0 lg:gap-4 lg:sticky lg:top-20 lg:self-start">
+              <div className="flex flex-col gap-6 lg:hidden">
+                {titleBlock}
+                <RecordingSummary
+                  slug={recording.slug}
+                  summary={recording.transcript_summary}
+                  canEdit={isOwner}
+                />
+              </div>
               {hasTranscriptTab ? (
                 <Tabs defaultValue="summary" className="gap-3">
                   <TabsList className="grid w-full grid-cols-2">
@@ -233,12 +251,14 @@ export default async function WatchPage({
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="summary" className="flex flex-col gap-6">
-                    {titleBlock}
-                    <RecordingSummary
-                      slug={recording.slug}
-                      summary={recording.transcript_summary}
-                      canEdit={isOwner}
-                    />
+                    <div className="hidden flex-col gap-6 lg:flex">
+                      {titleBlock}
+                      <RecordingSummary
+                        slug={recording.slug}
+                        summary={recording.transcript_summary}
+                        canEdit={isOwner}
+                      />
+                    </div>
                     {showChapters ? (
                       <ChaptersPanel
                         status={recording.chapters_status}
@@ -260,12 +280,14 @@ export default async function WatchPage({
                 </Tabs>
               ) : (
                 <div className="flex flex-col gap-6">
-                  {titleBlock}
-                  <RecordingSummary
-                    slug={recording.slug}
-                    summary={recording.transcript_summary}
-                    canEdit={isOwner}
-                  />
+                  <div className="hidden flex-col gap-6 lg:flex">
+                    {titleBlock}
+                    <RecordingSummary
+                      slug={recording.slug}
+                      summary={recording.transcript_summary}
+                      canEdit={isOwner}
+                    />
+                  </div>
                   {showChapters ? (
                     <ChaptersPanel
                       status={recording.chapters_status}

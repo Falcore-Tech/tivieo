@@ -39,6 +39,12 @@ scale steps only when a semantic token doesn't fit.
 - **Wide shell, narrow content:** the shared `SiteHeader` and the content-heavy page shells (`/v` watch page, the library, library loading skeleton, landing features) use `max-w-page` with `px-4 sm:px-6 lg:px-8` so they align to the same edge across the site.
 - **Forms stay readable:** single-column forms keep their own narrow widths inside the wide header — login (`max-w-sm`), edit recording (`max-w-3xl`), record studio (`max-w-5xl`). Widening these to the full page width hurts a single column, so only the header/shell widens around them. The landing hero likewise keeps its inner `max-w-3xl`/`max-w-xl` text constraints for readability.
 
+## Watch page (`/v/[slug]`) responsive layout
+- **Desktop (`lg`+):** two-column grid `lg:grid-cols-[minmax(0,1fr)_400px]` — video left, sticky sidebar right. The recent Tella-style refactor keeps the title + description **inside** the Summary tab on desktop, so they live in the `TabsContent` (gated `hidden lg:flex`).
+- **Mobile (`< lg`):** single column ordered like the Tella mobile reference — video → title + author/date → description (Show more) → Summary/Transcript tab bar → chapters. The title + description are hoisted into a separate `lg:hidden` block at the top of the `<aside>`, **above** the tabs, while the in-tab copy is hidden below `lg`. The two `EditableTitle`/`RecordingSummary` instances are mutually exclusive per breakpoint (one is always CSS-hidden), so edit state never conflicts.
+- **Title size:** `EditableTitle` is `text-2xl` on mobile, `lg:text-xl` in the compact desktop sidebar.
+- **Header actions:** the watch header shows Share (+ theme) only on mobile; Record/Download buttons are `max-sm:hidden` to avoid overflow on narrow screens.
+
 ## Radius
 `--radius: 0.5rem` (Tokyo Night roundness), with `--radius-sm … --radius-4xl` derived from it.
 Use `rounded-md/lg/xl/2xl`.

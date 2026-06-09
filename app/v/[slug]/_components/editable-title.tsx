@@ -27,7 +27,8 @@ export function EditableTitle({ slug, value, canEdit }: Props) {
     if (editing) inputRef.current?.select();
   }, [editing]);
 
-  const headingClass = "text-xl font-semibold tracking-tight text-balance";
+  const headingClass =
+    "text-2xl font-semibold tracking-tight text-balance lg:text-xl";
 
   if (!canEdit) {
     return <h1 className={headingClass}>{title}</h1>;
