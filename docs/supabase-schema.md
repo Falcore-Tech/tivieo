@@ -39,6 +39,8 @@ paths. Private videos play via presigned GET URLs; thumbnails via the public `r2
 | `tags` | text[] default `'{}'` | GIN-indexed (0002) |
 | `share_password_hash` | text null | `salt:scryptHash`; verified server-side (0002) |
 | `expires_at` | timestamptz null | public reads stop after this (0002) |
+| `remux_status` | text default `'pending'` | `pending` \| `processing` \| `ready` \| `error` — webm Cues-index job, run by `/api/remux` (0006) |
+| `remux_attempts` | smallint default `0` | retry counter for the remux worker (0006) |
 | `transcript_status` | text default `'none'` | `none` \| `pending` \| `processing` \| `ready` \| `error` (0003) |
 | `transcript_lang` | text null | Deepgram-detected language code (0003) |
 | `transcript_text` | text null | full transcript; FTS-indexed (0003) |
@@ -74,7 +76,9 @@ caption file from `/v/[slug]/captions` (built from the segments, same-origin) pl
 searchable transcript panel. Full setup + secrets are in `docs/transcription.md`.
 
 ## Migrations
-SQL lives in `supabase/migrations/` (`0001_init_recordings.sql`, `0002_qol.sql`, `0003_transcripts.sql`).
+SQL lives in `supabase/migrations/` (`0001_init_recordings.sql` … `0006_remux_status.sql`).
 Apply via the Supabase SQL editor, `supabase db push`, or the Supabase MCP. `0001` is applied; apply
 `0002` before using folders, tags, trash, view counts, vanity-slug redirects, or password/expiry links;
-apply `0003` before using transcription.
+apply `0003`/`0004` before using transcription; apply `0006` before using the seekability remux job
+(`/api/remux`). It adds `remux_status`/`remux_attempts` and marks all existing rows `ready` (they were
+backfilled by `scripts/remux-add-cues.ts`).

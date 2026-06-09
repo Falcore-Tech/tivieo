@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Video } from "lucide-react";
+import { ChevronDown, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -22,7 +22,7 @@ export async function SiteHeader({
   } = await supabase.auth.getUser();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
+    <header className="sticky top-0 z-40 backdrop-blur">
       <div
         className={cn(
           "mx-auto flex h-14 max-w-page items-center justify-between gap-4 px-4 sm:px-6 lg:px-8",
@@ -41,7 +41,9 @@ export async function SiteHeader({
           {title ? (
             <>
               <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
-              <span className="truncate text-sm font-medium">{title}</span>
+              <span className="flex min-w-0 items-center gap-1">
+                <span className="truncate text-sm font-medium">{title}</span>
+              </span>
             </>
           ) : null}
         </div>

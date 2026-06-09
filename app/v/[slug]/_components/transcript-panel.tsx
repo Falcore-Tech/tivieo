@@ -127,7 +127,7 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
   if (inProgress) {
     return (
       <PanelShell>
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 px-1 py-3 text-sm text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" />
           Transcribing this recording…
         </div>
@@ -168,8 +168,8 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
 
   return (
     <PanelShell>
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 className="text-sm font-medium">Transcript</h2>
+      <div className="flex items-center justify-between gap-2 px-1 pb-2">
+        <h2 className="text-base font-semibold">Transcript</h2>
         <button
           type="button"
           onClick={copyTranscript}
@@ -184,7 +184,7 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
         </button>
       </div>
 
-      <div className="border-b border-border px-4 py-2">
+      <div className="px-1 pb-2">
         <div className="flex items-center gap-2 rounded-md bg-secondary px-2.5 py-1.5">
           <Search className="size-3.5 shrink-0 text-muted-foreground" />
           <input
@@ -204,7 +204,7 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
 
       <ul
         ref={listRef}
-        className="max-h-96 overflow-y-auto py-1 lg:max-h-[calc(100svh-23rem)]"
+        className="max-h-96 space-y-0.5 overflow-y-auto py-1 lg:max-h-[calc(100svh-23rem)]"
       >
         {filtered.length === 0 ? (
           <li className="px-4 py-6 text-sm text-muted-foreground">
@@ -220,7 +220,7 @@ export function TranscriptPanel({ status, segments, isOwner, slug }: Props) {
                   type="button"
                   onClick={() => seekTo(segment.start)}
                   className={cn(
-                    "flex w-full gap-3 px-4 py-2 text-left transition-colors hover:bg-secondary",
+                    "flex w-full gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-secondary",
                     isActive && "bg-secondary",
                   )}
                 >
@@ -302,9 +302,5 @@ function TranscriptSkeleton() {
 }
 
 function PanelShell({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
-      {children}
-    </section>
-  );
+  return <section className="flex flex-col">{children}</section>;
 }

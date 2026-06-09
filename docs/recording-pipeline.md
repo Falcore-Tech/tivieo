@@ -46,6 +46,27 @@ bespoke piece.
    - `createRecording()` server action uploads the small poster JPEG server-side to the public
      `tivieo-thumbnails` bucket (`putThumbnail`), computes the slug, inserts the row (storing the bare
      R2 keys in `storage_path`/`thumbnail_path`), returns `/v/<slug>`. See `docs/r2-storage.md`.
+   - On success the dialog fires a fire-and-forget `POST /api/remux { recordingId }` to start the
+     remux below; the cron sweep is the safety net if that request never lands.
+
+6. **Make seekable (background remux)** — `app/api/remux/` + `recordings.remux_status`
+   - MediaRecorder webm has **no Cues seek index**, so browsers can only seek within buffered data
+     (seeks past the buffer clamp to the buffered end and "snap back"). `fix-webm-duration` writes the
+     duration but **not** the index.
+   - A **server-side worker** (`app/api/remux/route.ts`, Node runtime) runs the **`ffmpeg-static`**
+     binary with `-c copy` to rewrite the container **with a Cues index** — lossless, no re-encode —
+     then overwrites the same R2 key in place (`putVideo`). The remux logic is in `_lib/remux.ts`
+     (presign GET → ffmpeg to a real temp file, not a pipe, so the muxer can seek back to write Cues →
+     `putVideo`). `next.config.ts` `outputFileTracingIncludes` bundles the binary into that route.
+   - `remux_status` (`pending → processing → ready/error`, + `remux_attempts`) is the job's state
+     machine. The worker **atomically claims** a row (`pending/error → processing` guarded by a status
+     filter) so concurrent runs never double-process. `POST` handles the per-recording owner kick
+     (session-authed); `GET` handles the **Vercel cron** sweep (`vercel.json`, every 5 min, authed by
+     the `Authorization: Bearer $CRON_SECRET` header Vercel sends). Up to `MAX_ATTEMPTS` retries.
+   - Watch page shows a subtle **"Optimizing for smooth seeking…"** chip (`RemuxNotice`) that polls
+     until `ready`; playback works throughout, only full seeking waits.
+   - Backfill existing rows once with `bun --env-file=.env.local scripts/remux-add-cues.ts`
+     (re-uploads in place + sets `remux_status='ready'`; `--dry` to preview).
 
 ## Components
 `recorder-studio` orchestrates: `device-picker` → `pip-preview` (live canvas) → `recording-controls`

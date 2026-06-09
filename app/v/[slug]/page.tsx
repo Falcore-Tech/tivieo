@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarX, Eye, Plus } from "lucide-react";
+import { CalendarX, Download, Eye, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,6 +24,7 @@ import { TranscriptPanel } from "./_components/transcript-panel";
 import { ShareBar } from "./_components/share-bar";
 import { WatchActions } from "./_components/watch-actions";
 import { ViewBeacon } from "./_components/view-beacon";
+import { RemuxNotice } from "./_components/remux-notice";
 import { PasswordGate } from "./_components/password-gate";
 
 async function fetchBySlug(slug: string) {
@@ -123,6 +124,10 @@ export default async function WatchPage({
 
   const videoUrl = await presignGetUrl(recording.storage_path, 60 * 60 * 2);
 
+  const downloadUrl = await presignGetUrl(recording.storage_path, 60 * 60 * 2, {
+    downloadFilename: `${recording.slug}.webm`,
+  });
+
   const poster = recording.thumbnail_path
     ? publicThumbnailUrl(recording.thumbnail_path)
     : null;
@@ -145,6 +150,11 @@ export default async function WatchPage({
                 </Link>
               </Button>
             ) : null}
+            <Button asChild size="sm" variant="outline" className="h-8">
+              <a href={downloadUrl} download={`${recording.slug}.webm`}>
+                <Download className="size-4" /> Download
+              </a>
+            </Button>
             <WatchActions slug={recording.slug} title={recording.title} />
           </>
         }
@@ -161,18 +171,20 @@ export default async function WatchPage({
             </div>
           ) : null}
 
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 xl:grid-cols-[minmax(0,1fr)_440px] xl:gap-8">
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 xl:gap-8">
             <div className="min-w-0">
               <VideoPlayer
                 src={videoUrl}
                 title={recording.title}
                 poster={poster}
+                durationSeconds={recording.duration_seconds}
                 captionsSrc={
                   recording.transcript_status === "ready"
                     ? `/v/${recording.slug}/captions`
                     : null
                 }
               />
+              <RemuxNotice status={recording.remux_status} />
             </div>
 
             <aside className="mt-5 flex flex-col gap-4 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
