@@ -146,7 +146,7 @@ export function LibraryShell({
         "Folder");
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-page flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <div className="lg:grid lg:grid-cols-[210px_1fr] lg:gap-8">
         <aside className="mb-6 space-y-4 lg:sticky lg:top-20 lg:mb-0 lg:self-start">
           <CollectionsSidebar

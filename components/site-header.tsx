@@ -25,7 +25,7 @@ export async function SiteHeader({
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
       <div
         className={cn(
-          "mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6",
+          "mx-auto flex h-14 max-w-page items-center justify-between gap-4 px-4 sm:px-6 lg:px-8",
           containerClassName,
         )}
       >

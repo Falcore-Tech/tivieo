@@ -134,10 +134,9 @@ export default async function WatchPage({
       <SiteHeader
         minimal
         title={recording.title}
-        containerClassName="max-w-[1760px] lg:px-8"
         actions={<WatchActions slug={recording.slug} title={recording.title} />}
       />
-      <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-page flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <VideoProvider>
           {expired && isOwner ? (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning-500/30 bg-warning-500/10 px-3 py-2 text-sm text-warning-700 dark:text-warning-300">

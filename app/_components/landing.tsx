@@ -45,8 +45,8 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
-        <div className="grid gap-5 sm:grid-cols-3">
+      <section className="mx-auto max-w-page px-4 pb-24 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
           {STEPS.map((step) => (
             <div
               key={step.title}

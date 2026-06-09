@@ -240,6 +240,9 @@
   --color-error-900: var(--error-900);
   --color-error-950: var(--error-950);
 
+  /* Layout — max content width (shared by header + page shells) */
+  --container-page: 1760px;
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
