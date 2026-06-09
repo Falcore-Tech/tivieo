@@ -91,6 +91,19 @@ export async function putThumbnail(
   );
 }
 
+// Server-side overwrite of a video object (used by the remux worker to replace
+// the upload with a Cues-indexed copy). Same key, same Content-Type.
+export async function putVideo(key: string, body: Uint8Array) {
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: VIDEOS_BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: "video/webm",
+    }),
+  );
+}
+
 export async function deleteObjects(bucket: R2Bucket, keys: string[]) {
   if (keys.length === 0) return;
   await r2.send(

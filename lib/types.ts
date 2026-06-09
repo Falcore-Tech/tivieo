@@ -1,5 +1,6 @@
 export type RecordingVisibility = "public" | "unlisted" | "private";
 export type RecordingStatus = "uploading" | "ready" | "error";
+export type RemuxStatus = "pending" | "processing" | "ready" | "error";
 export type TranscriptStatus =
   | "none"
   | "pending"
@@ -42,6 +43,8 @@ export type Recording = {
   tags: string[];
   share_password_hash: string | null;
   expires_at: string | null;
+  remux_status: RemuxStatus;
+  remux_attempts: number;
   transcript_status: TranscriptStatus;
   transcript_lang: string | null;
   transcript_text: string | null;
