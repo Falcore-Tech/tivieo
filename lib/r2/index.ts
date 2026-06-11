@@ -17,6 +17,13 @@ const r2 = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
+  // Newer @aws-sdk/client-s3 adds a CRC32 checksum to PutObject by default,
+  // which bakes x-amz-checksum-crc32 / x-amz-sdk-checksum-algorithm into the
+  // presigned PUT URL. The browser then must send those headers, breaking the
+  // R2 CORS preflight and the signature (axios doesn't compute the checksum).
+  // R2 doesn't require these, so only attach checksums when explicitly needed.
+  requestChecksumCalculation: "WHEN_REQUIRED",
+  responseChecksumValidation: "WHEN_REQUIRED",
 });
 
 const VIDEOS_BUCKET = process.env.R2_VIDEOS_BUCKET!;

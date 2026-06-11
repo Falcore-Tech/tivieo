@@ -2,7 +2,11 @@
   "rules": [
     {
       "allowed": {
-        "origins": ["http://localhost:3000", "https://tivieo.vercel.app"],
+        "origins": [
+          "http://localhost:3000",
+          "https://tivieo.vercel.app",
+          "https://tivieo.falcoretech.com"
+        ],
         "methods": ["GET", "PUT", "HEAD"],
         "headers": ["content-type"]
       },
